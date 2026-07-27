@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { setStudentAssignments } from "../actions";
 
 type CardContent = {
   front?: string;
@@ -41,6 +42,68 @@ export default async function StudentProgressPage({
     .single();
 
   if (!student) notFound();
+
+  const { data: decks } = await supabase
+    .from("decks")
+    .select("id, title")
+    .order("title", { ascending: true });
+  const { data: listeningExercises } = await supabase
+    .from("listening_exercises")
+    .select("id, title")
+    .order("title", { ascending: true });
+  const { data: verbDrills } = await supabase
+    .from("verb_drills")
+    .select("id, infinitive, translation")
+    .order("infinitive", { ascending: true });
+
+  const { data: deckAssignments } = await supabase
+    .from("assignments")
+    .select("deck_id, student_id");
+  const { data: listeningAssignments } = await supabase
+    .from("listening_assignments")
+    .select("exercise_id, student_id");
+  const { data: verbAssignments } = await supabase
+    .from("verb_drill_assignments")
+    .select("drill_id, student_id");
+
+  const deckStatus = new Map(
+    (decks ?? []).map((d) => {
+      const rows = (deckAssignments ?? []).filter((a) => a.deck_id === d.id);
+      return [
+        d.id,
+        {
+          everyone: rows.some((r) => r.student_id === null),
+          assigned: rows.some((r) => r.student_id === id),
+        },
+      ] as const;
+    })
+  );
+  const listeningStatus = new Map(
+    (listeningExercises ?? []).map((e) => {
+      const rows = (listeningAssignments ?? []).filter((a) => a.exercise_id === e.id);
+      return [
+        e.id,
+        {
+          everyone: rows.some((r) => r.student_id === null),
+          assigned: rows.some((r) => r.student_id === id),
+        },
+      ] as const;
+    })
+  );
+  const verbStatus = new Map(
+    (verbDrills ?? []).map((v) => {
+      const rows = (verbAssignments ?? []).filter((a) => a.drill_id === v.id);
+      return [
+        v.id,
+        {
+          everyone: rows.some((r) => r.student_id === null),
+          assigned: rows.some((r) => r.student_id === id),
+        },
+      ] as const;
+    })
+  );
+
+  const setStudentAssignmentsWithId = setStudentAssignments.bind(null, id);
 
   const { data: attempts } = await supabase
     .from("attempts")
@@ -94,6 +157,114 @@ export default async function StudentProgressPage({
         </h1>
         <p className="text-zinc-600 dark:text-zinc-400">{student.email}</p>
       </div>
+
+      <form
+        action={setStudentAssignmentsWithId}
+        className="flex flex-col gap-4 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]"
+      >
+        <h2 className="font-medium">Assigned content</h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Check everything this student should have access to, then save.
+          Items already shared with everyone are checked and locked — no
+          need to assign those individually.
+        </p>
+
+        {decks && decks.length > 0 && (
+          <div>
+            <h3 className="mb-1 text-sm font-medium text-zinc-500">Decks</h3>
+            <div className="flex flex-col gap-1">
+              {decks.map((deck) => {
+                const status = deckStatus.get(deck.id);
+                return (
+                  <label key={deck.id} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      name="decks"
+                      value={deck.id}
+                      defaultChecked={status?.assigned || status?.everyone}
+                      disabled={status?.everyone}
+                    />
+                    {deck.title}
+                    {status?.everyone && (
+                      <span className="text-xs text-zinc-400">(everyone)</span>
+                    )}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {listeningExercises && listeningExercises.length > 0 && (
+          <div>
+            <h3 className="mb-1 text-sm font-medium text-zinc-500">
+              Listening Exercises
+            </h3>
+            <div className="flex flex-col gap-1">
+              {listeningExercises.map((exercise) => {
+                const status = listeningStatus.get(exercise.id);
+                return (
+                  <label key={exercise.id} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      name="listening"
+                      value={exercise.id}
+                      defaultChecked={status?.assigned || status?.everyone}
+                      disabled={status?.everyone}
+                    />
+                    {exercise.title}
+                    {status?.everyone && (
+                      <span className="text-xs text-zinc-400">(everyone)</span>
+                    )}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {verbDrills && verbDrills.length > 0 && (
+          <div>
+            <h3 className="mb-1 text-sm font-medium text-zinc-500">Verb Drills</h3>
+            <div className="flex flex-col gap-1">
+              {verbDrills.map((drill) => {
+                const status = verbStatus.get(drill.id);
+                return (
+                  <label key={drill.id} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      name="verbs"
+                      value={drill.id}
+                      defaultChecked={status?.assigned || status?.everyone}
+                      disabled={status?.everyone}
+                    />
+                    <span dir="auto">
+                      {drill.infinitive} — {drill.translation}
+                    </span>
+                    {status?.everyone && (
+                      <span className="text-xs text-zinc-400">(everyone)</span>
+                    )}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {!decks?.length && !listeningExercises?.length && !verbDrills?.length && (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Nothing created yet — build a deck, listening exercise, or verb
+            drill first.
+          </p>
+        )}
+
+        <button
+          type="submit"
+          className="self-start rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+        >
+          Save assignments
+        </button>
+      </form>
 
       <div className="rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]">
         <h2 className="mb-2 font-medium">Overall</h2>

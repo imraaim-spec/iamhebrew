@@ -57,7 +57,7 @@ export default async function DeckDetailPage({
 
   const { data: currentAssignments } = await supabase
     .from("assignments")
-    .select("student_id")
+    .select("student_id, custom_name")
     .eq("deck_id", id);
 
   const assignedToEveryone =
@@ -66,6 +66,11 @@ export default async function DeckDetailPage({
     (currentAssignments ?? [])
       .filter((a) => a.student_id !== null)
       .map((a) => a.student_id)
+  );
+  const customNameByStudent = new Map(
+    (currentAssignments ?? [])
+      .filter((a) => a.student_id !== null)
+      .map((a) => [a.student_id as string, a.custom_name as string | null])
   );
 
   const createCardWithDeck = createCard.bind(null, id);
@@ -109,15 +114,23 @@ export default async function DeckDetailPage({
               Or choose specific students:
             </p>
             {students.map((student) => (
-              <label key={student.id} className="flex items-center gap-2 text-sm">
+              <div key={student.id} className="flex items-center gap-2 text-sm">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    name="students"
+                    value={student.id}
+                    defaultChecked={assignedStudentIds.has(student.id)}
+                  />
+                  {student.full_name || student.email}
+                </label>
                 <input
-                  type="checkbox"
-                  name="students"
-                  value={student.id}
-                  defaultChecked={assignedStudentIds.has(student.id)}
+                  name={`custom_name_${student.id}`}
+                  placeholder="Custom name for this student (optional)"
+                  defaultValue={customNameByStudent.get(student.id) ?? ""}
+                  className="rounded border border-black/[.08] px-2 py-1 text-xs dark:border-white/[.145] dark:bg-black"
                 />
-                {student.full_name || student.email}
-              </label>
+              </div>
             ))}
           </div>
         ) : (

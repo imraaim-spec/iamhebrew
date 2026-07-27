@@ -55,7 +55,7 @@ export default async function Home() {
                 href="/student"
                 className="flex h-12 items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
               >
-                Go to my decks
+                Go to my assignments
               </Link>
             )}
             <SignOutButton />

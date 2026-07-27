@@ -177,7 +177,11 @@ export async function setDeckAssignments(deckId: string, formData: FormData) {
     if (error) throw new Error(`Failed to save assignment: ${error.message}`);
   } else if (studentIds.length > 0) {
     const { error } = await supabase.from("assignments").insert(
-      studentIds.map((studentId) => ({ deck_id: deckId, student_id: studentId }))
+      studentIds.map((studentId) => ({
+        deck_id: deckId,
+        student_id: studentId,
+        custom_name: (formData.get(`custom_name_${studentId}`) as string)?.trim() || null,
+      }))
     );
     if (error) throw new Error(`Failed to save assignment: ${error.message}`);
   }
