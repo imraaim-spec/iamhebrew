@@ -162,14 +162,24 @@ export async function setDeckAssignments(deckId: string, formData: FormData) {
 
   // Replace the whole assignment set for this deck each time — simplest
   // way to keep it consistent with whatever's checked in the form.
-  await supabase.from("assignments").delete().eq("deck_id", deckId);
+  const { error: deleteError } = await supabase
+    .from("assignments")
+    .delete()
+    .eq("deck_id", deckId);
+  if (deleteError) {
+    throw new Error(`Failed to clear previous assignment: ${deleteError.message}`);
+  }
 
   if (everyone) {
-    await supabase.from("assignments").insert({ deck_id: deckId, student_id: null });
+    const { error } = await supabase
+      .from("assignments")
+      .insert({ deck_id: deckId, student_id: null });
+    if (error) throw new Error(`Failed to save assignment: ${error.message}`);
   } else if (studentIds.length > 0) {
-    await supabase.from("assignments").insert(
+    const { error } = await supabase.from("assignments").insert(
       studentIds.map((studentId) => ({ deck_id: deckId, student_id: studentId }))
     );
+    if (error) throw new Error(`Failed to save assignment: ${error.message}`);
   }
 
   revalidatePath(`/teacher/decks/${deckId}`);

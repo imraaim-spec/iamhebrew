@@ -57,16 +57,24 @@ export async function setVerbDrillAssignments(drillId: string, formData: FormDat
   const everyone = formData.get("everyone") === "on";
   const studentIds = formData.getAll("students").map((v) => String(v));
 
-  await supabase.from("verb_drill_assignments").delete().eq("drill_id", drillId);
+  const { error: deleteError } = await supabase
+    .from("verb_drill_assignments")
+    .delete()
+    .eq("drill_id", drillId);
+  if (deleteError) {
+    throw new Error(`Failed to clear previous assignment: ${deleteError.message}`);
+  }
 
   if (everyone) {
-    await supabase
+    const { error } = await supabase
       .from("verb_drill_assignments")
       .insert({ drill_id: drillId, student_id: null });
+    if (error) throw new Error(`Failed to save assignment: ${error.message}`);
   } else if (studentIds.length > 0) {
-    await supabase.from("verb_drill_assignments").insert(
+    const { error } = await supabase.from("verb_drill_assignments").insert(
       studentIds.map((studentId) => ({ drill_id: drillId, student_id: studentId }))
     );
+    if (error) throw new Error(`Failed to save assignment: ${error.message}`);
   }
 
   revalidatePath(`/teacher/verbs/${drillId}`);

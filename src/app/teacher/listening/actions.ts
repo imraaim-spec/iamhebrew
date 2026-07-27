@@ -78,16 +78,24 @@ export async function setListeningAssignments(exerciseId: string, formData: Form
   const everyone = formData.get("everyone") === "on";
   const studentIds = formData.getAll("students").map((v) => String(v));
 
-  await supabase.from("listening_assignments").delete().eq("exercise_id", exerciseId);
+  const { error: deleteError } = await supabase
+    .from("listening_assignments")
+    .delete()
+    .eq("exercise_id", exerciseId);
+  if (deleteError) {
+    throw new Error(`Failed to clear previous assignment: ${deleteError.message}`);
+  }
 
   if (everyone) {
-    await supabase
+    const { error } = await supabase
       .from("listening_assignments")
       .insert({ exercise_id: exerciseId, student_id: null });
+    if (error) throw new Error(`Failed to save assignment: ${error.message}`);
   } else if (studentIds.length > 0) {
-    await supabase.from("listening_assignments").insert(
+    const { error } = await supabase.from("listening_assignments").insert(
       studentIds.map((studentId) => ({ exercise_id: exerciseId, student_id: studentId }))
     );
+    if (error) throw new Error(`Failed to save assignment: ${error.message}`);
   }
 
   revalidatePath(`/teacher/listening/${exerciseId}`);
