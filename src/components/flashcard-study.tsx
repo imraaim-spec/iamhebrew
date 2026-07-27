@@ -45,6 +45,12 @@ export function FlashcardStudy({ cards }: { cards: Flashcard[] }) {
 
   const card = cards[index];
 
+  function goTo(newIndex: number) {
+    if (newIndex < 0 || newIndex >= cards.length) return;
+    setIndex(newIndex);
+    setFlipped(false);
+  }
+
   async function mark(knew: boolean) {
     await logAttempt(card.id, knew);
     setResults((r) => ({ knew: r.knew + (knew ? 1 : 0), total: r.total + 1 }));
@@ -62,13 +68,33 @@ export function FlashcardStudy({ cards }: { cards: Flashcard[] }) {
         Card {index + 1} of {cards.length}
       </p>
 
-      <button
-        onClick={() => setFlipped((f) => !f)}
-        dir="auto"
-        className="flex h-56 w-full max-w-md items-center justify-center rounded-2xl border border-black/[.08] bg-white p-8 text-center text-2xl font-medium shadow-sm dark:border-white/[.145] dark:bg-zinc-900"
-      >
-        {flipped ? card.content.back : card.content.front}
-      </button>
+      <div className="flex w-full max-w-md items-center gap-3">
+        <button
+          onClick={() => goTo(index - 1)}
+          disabled={index === 0}
+          aria-label="Previous card"
+          className="shrink-0 rounded-full border border-black/[.08] px-3 py-2 text-lg disabled:opacity-30 dark:border-white/[.145]"
+        >
+          ‹
+        </button>
+
+        <button
+          onClick={() => setFlipped((f) => !f)}
+          dir="auto"
+          className="flex h-56 flex-1 items-center justify-center rounded-2xl border border-black/[.08] bg-white p-8 text-center text-2xl font-medium shadow-sm dark:border-white/[.145] dark:bg-zinc-900"
+        >
+          {flipped ? card.content.back : card.content.front}
+        </button>
+
+        <button
+          onClick={() => goTo(index + 1)}
+          disabled={index === cards.length - 1}
+          aria-label="Next card"
+          className="shrink-0 rounded-full border border-black/[.08] px-3 py-2 text-lg disabled:opacity-30 dark:border-white/[.145]"
+        >
+          ›
+        </button>
+      </div>
 
       {card.content.audio_url && (
         <audio controls src={card.content.audio_url} className="h-8" />
@@ -76,22 +102,20 @@ export function FlashcardStudy({ cards }: { cards: Flashcard[] }) {
 
       <p className="text-sm text-zinc-500">Tap the card to flip it</p>
 
-      {flipped && (
-        <div className="flex gap-4">
-          <button
-            onClick={() => mark(false)}
-            className="rounded-full border border-red-400 px-5 py-2 text-sm font-medium text-red-600 dark:text-red-400"
-          >
-            Didn&apos;t know
-          </button>
-          <button
-            onClick={() => mark(true)}
-            className="rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background"
-          >
-            Knew it
-          </button>
-        </div>
-      )}
+      <div className="flex gap-4">
+        <button
+          onClick={() => mark(false)}
+          className="rounded-full border border-red-400 px-5 py-2 text-sm font-medium text-red-600 dark:text-red-400"
+        >
+          Don&apos;t know
+        </button>
+        <button
+          onClick={() => mark(true)}
+          className="rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background"
+        >
+          Know
+        </button>
+      </div>
     </div>
   );
 }
