@@ -206,6 +206,37 @@ export async function deleteCard(cardId: string, deckId: string) {
   revalidatePath(`/teacher/decks/${deckId}`);
 }
 
+export async function regenerateMissingAudio(deckId: string) {
+  const supabase = await createClient();
+
+  const { data: cards, error } = await supabase
+    .from("cards")
+    .select("id, content")
+    .eq("deck_id", deckId)
+    .eq("type", "flashcard");
+  if (error) throw new Error(`Failed to load cards: ${error.message}`);
+
+  const missing = (cards ?? []).filter(
+    (c) => !(c.content as Record<string, unknown>).audio_url
+  );
+
+  // Only touches cards still missing audio, so it's safe to click again if
+  // a large deck doesn't finish in one request — it just picks up the rest.
+  for (const card of missing) {
+    const content = card.content as Record<string, unknown>;
+    const front = content.front as string;
+    const audioUrl = await generateHebrewAudioUrl(supabase, deckId, front);
+    if (!audioUrl) continue;
+
+    await supabase
+      .from("cards")
+      .update({ content: { ...content, audio_url: audioUrl } })
+      .eq("id", card.id);
+  }
+
+  revalidatePath(`/teacher/decks/${deckId}`);
+}
+
 export async function deleteDeck(deckId: string) {
   const supabase = await createClient();
   const { error } = await supabase.from("decks").delete().eq("id", deckId);

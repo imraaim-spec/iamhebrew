@@ -8,6 +8,7 @@ import {
   createFlashcardsBulk,
   deleteCard,
   deleteDeck,
+  regenerateMissingAudio,
   setDeckAssignments,
 } from "./actions";
 
@@ -79,6 +80,11 @@ export default async function DeckDetailPage({
   const createFlashcardsBulkWithDeck = createFlashcardsBulk.bind(null, id);
   const setDeckAssignmentsWithDeck = setDeckAssignments.bind(null, id);
   const deleteDeckWithId = deleteDeck.bind(null, id);
+  const regenerateMissingAudioWithId = regenerateMissingAudio.bind(null, id);
+
+  const missingAudioCount = (cards ?? []).filter(
+    (c) => c.type === "flashcard" && !c.content.audio_url
+  ).length;
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
@@ -89,12 +95,25 @@ export default async function DeckDetailPage({
             <p className="text-zinc-600 dark:text-zinc-400">{deck.description}</p>
           )}
         </div>
-        <Link
-          href={`/teacher/decks/${id}/study`}
-          className="shrink-0 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
-        >
-          Study this deck
-        </Link>
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <Link
+            href={`/teacher/decks/${id}/study`}
+            className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+          >
+            Study this deck
+          </Link>
+          {missingAudioCount > 0 && (
+            <form action={regenerateMissingAudioWithId}>
+              <button
+                type="submit"
+                className="rounded-full border border-black/[.08] px-4 py-2 text-sm dark:border-white/[.145]"
+              >
+                Generate audio for {missingAudioCount} card
+                {missingAudioCount === 1 ? "" : "s"} missing it
+              </button>
+            </form>
+          )}
+        </div>
       </div>
 
       <form
