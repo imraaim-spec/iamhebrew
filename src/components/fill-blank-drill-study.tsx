@@ -141,7 +141,7 @@ function FillBlankPiece({
 
   return (
     <div className="flex flex-col gap-4 rounded-2xl border border-black/[.08] bg-[#fdfaf3] p-6 dark:border-white/[.145] dark:bg-zinc-900">
-      <p dir="rtl" className="text-xl leading-loose">
+      <p dir="rtl" className="whitespace-pre-wrap text-xl leading-loose">
         {segments.map((seg, i) => {
           if ("text" in seg) {
             return <span key={i}>{seg.text}</span>;

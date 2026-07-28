@@ -112,7 +112,7 @@ export function ClozeListeningStudy({ exercise }: { exercise: ListeningExercise 
         </div>
       )}
 
-      <p dir="rtl" className="text-xl leading-loose">
+      <p dir="rtl" className="whitespace-pre-wrap text-xl leading-loose">
         {segments.map((seg, i) => {
           if ("text" in seg) {
             return <span key={i}>{seg.text}</span>;
