@@ -5,6 +5,7 @@ const TYPE_LABELS: Record<string, string> = {
   deck: "Flashcards",
   listening: "Listening",
   verb: "Verb Drill",
+  fillblank: "Fill in the Blanks",
 };
 
 export default async function StudentHomePage() {
@@ -26,6 +27,10 @@ export default async function StudentHomePage() {
   const { data: verbDrills } = await supabase
     .from("verb_drills")
     .select("id, infinitive, translation")
+    .order("created_at", { ascending: false });
+  const { data: fillBlankDrills } = await supabase
+    .from("fill_blank_drills")
+    .select("id, title")
     .order("created_at", { ascending: false });
 
   // Custom per-student deck nicknames, if the teacher set any.
@@ -59,6 +64,12 @@ export default async function StudentHomePage() {
       id: v.id,
       title: `${v.infinitive} — ${v.translation}`,
       href: `/student/verbs/${v.id}`,
+    })),
+    ...(fillBlankDrills ?? []).map((d) => ({
+      type: "fillblank" as const,
+      id: d.id,
+      title: d.title,
+      href: `/student/fill-blanks/${d.id}`,
     })),
   ];
 

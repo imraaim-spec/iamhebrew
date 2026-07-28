@@ -1,19 +1,19 @@
 "use client";
 
-export function DeleteDeckButton({
+export function ConfirmDeleteButton({
   action,
+  label,
+  confirmMessage,
 }: {
   action: () => void | Promise<void>;
+  label: string;
+  confirmMessage: string;
 }) {
   return (
     <form
       action={action}
       onSubmit={(e) => {
-        if (
-          !confirm(
-            "Delete this deck and all its cards? This can't be undone, and it will remove any student progress tied to it."
-          )
-        ) {
+        if (!confirm(confirmMessage)) {
           e.preventDefault();
         }
       }}
@@ -22,7 +22,7 @@ export function DeleteDeckButton({
         type="submit"
         className="text-sm text-red-600 hover:underline dark:text-red-400"
       >
-        Delete this deck
+        {label}
       </button>
     </form>
   );

@@ -26,17 +26,20 @@ export default async function TeacherLayout({
     <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-black">
       <nav className="flex items-center gap-6 border-b border-black/[.08] px-8 py-4 dark:border-white/[.145]">
         <span className="font-semibold">iamhebrew — Teacher</span>
-        <Link href="/teacher/decks" className="text-sm font-medium">
-          Decks
-        </Link>
         <Link href="/teacher/students" className="text-sm font-medium">
           Students
+        </Link>
+        <Link href="/teacher/decks" className="text-sm font-medium">
+          Flash Cards
         </Link>
         <Link href="/teacher/listening" className="text-sm font-medium">
           Listening
         </Link>
         <Link href="/teacher/verbs" className="text-sm font-medium">
           Verbs
+        </Link>
+        <Link href="/teacher/fill-blanks" className="text-sm font-medium">
+          Fill in the Blanks
         </Link>
         <Link href="/" className="ml-auto text-sm text-zinc-500">
           Back to site

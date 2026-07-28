@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { CardForm } from "@/components/card-form";
-import { DeleteDeckButton } from "@/components/delete-deck-button";
+import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import {
   createCard,
   createFlashcardsBulk,
@@ -247,7 +247,11 @@ export default async function DeckDetailPage({
         )}
       </ul>
 
-      <DeleteDeckButton action={deleteDeckWithId} />
+      <ConfirmDeleteButton
+        action={deleteDeckWithId}
+        label="Delete this deck"
+        confirmMessage="Delete this deck and all its cards? This can't be undone, and it will remove any student progress tied to it."
+      />
     </div>
   );
 }
