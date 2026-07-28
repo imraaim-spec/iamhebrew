@@ -2,10 +2,12 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { CardForm } from "@/components/card-form";
+import { DeleteDeckButton } from "@/components/delete-deck-button";
 import {
   createCard,
   createFlashcardsBulk,
   deleteCard,
+  deleteDeck,
   setDeckAssignments,
 } from "./actions";
 
@@ -76,6 +78,7 @@ export default async function DeckDetailPage({
   const createCardWithDeck = createCard.bind(null, id);
   const createFlashcardsBulkWithDeck = createFlashcardsBulk.bind(null, id);
   const setDeckAssignmentsWithDeck = setDeckAssignments.bind(null, id);
+  const deleteDeckWithId = deleteDeck.bind(null, id);
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
@@ -224,6 +227,8 @@ export default async function DeckDetailPage({
           </p>
         )}
       </ul>
+
+      <DeleteDeckButton action={deleteDeckWithId} />
     </div>
   );
 }

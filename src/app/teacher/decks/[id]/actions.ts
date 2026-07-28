@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -203,4 +204,12 @@ export async function deleteCard(cardId: string, deckId: string) {
   const supabase = await createClient();
   await supabase.from("cards").delete().eq("id", cardId);
   revalidatePath(`/teacher/decks/${deckId}`);
+}
+
+export async function deleteDeck(deckId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("decks").delete().eq("id", deckId);
+  if (error) throw new Error(`Failed to delete deck: ${error.message}`);
+  revalidatePath("/teacher/decks");
+  redirect("/teacher/decks");
 }
