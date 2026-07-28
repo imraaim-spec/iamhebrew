@@ -66,6 +66,46 @@ export async function createListeningExercise(formData: FormData) {
   revalidatePath("/teacher/listening");
 }
 
+export async function createFillBlankBatch(formData: FormData) {
+  const raw = (formData.get("batch") as string) || "";
+  const lines = raw.split(/\r?\n/);
+
+  // First non-empty line is the topic name, used as a title prefix for
+  // every exercise generated from this paste.
+  let i = 0;
+  while (i < lines.length && !lines[i].trim()) i++;
+  const topic = lines[i]?.trim();
+  if (!topic) return;
+  const rest = lines.slice(i + 1).join("\n");
+
+  // Two-or-more blank lines mark a new exercise; a single blank line
+  // stays inside one (e.g. between an example question and its answer).
+  const blocks = rest
+    .split(/\n[ \t]*\n[ \t]*\n+/)
+    .map((b) => b.trim())
+    .filter(Boolean);
+  if (blocks.length === 0) return;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const rows = blocks.map((template, index) => ({
+    title: `${topic} — ${index + 1}`,
+    template,
+    audio_url: null,
+    youtube_url: null,
+    created_by: user.id,
+  }));
+
+  const { error } = await supabase.from("listening_exercises").insert(rows);
+  if (error) throw new Error(`Failed to save exercises: ${error.message}`);
+
+  revalidatePath("/teacher/listening");
+}
+
 export async function deleteListeningExercise(id: string) {
   const supabase = await createClient();
   await supabase.from("listening_exercises").delete().eq("id", id);
