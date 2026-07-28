@@ -37,6 +37,16 @@ export function normalizeAnswer(value: string): string {
     .toLowerCase();
 }
 
+// Text to read aloud for a cloze passage's audio — skips the answers
+// entirely, since hearing them would give away the exercise.
+export function extractSpeakableText(template: string): string {
+  return parseClozeTemplate(template)
+    .filter((s): s is { text: string } => "text" in s)
+    .map((s) => s.text.trim())
+    .filter(Boolean)
+    .join(" ");
+}
+
 export function getYouTubeEmbedUrl(url: string, startSeconds?: number): string | null {
   const match = url.match(
     /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/

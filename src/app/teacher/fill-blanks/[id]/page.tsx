@@ -18,13 +18,14 @@ export default async function FillBlankDrillDetailPage({
 
   const { data: drill } = await supabase
     .from("fill_blank_drills")
-    .select("id, title, description, segments")
+    .select("id, title, description, segments, audio_urls")
     .eq("id", id)
     .single();
 
   if (!drill) notFound();
 
   const segments = drill.segments as string[];
+  const audioUrls = (drill.audio_urls as (string | null)[]) ?? [];
 
   const { data: students } = await supabase
     .from("profiles")
@@ -88,6 +89,9 @@ export default async function FillBlankDrillDetailPage({
                 <p dir="auto" className="whitespace-pre-wrap">
                   {segment}
                 </p>
+                {audioUrls[i] && (
+                  <audio controls src={audioUrls[i]!} className="mt-2 h-8" />
+                )}
               </div>
               <form action={deleteSegmentWithIds}>
                 <button

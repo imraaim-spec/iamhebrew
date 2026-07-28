@@ -8,10 +8,12 @@ export function FillBlankDrillStudy({
   drillId,
   title,
   segments,
+  audioUrls,
 }: {
   drillId: string;
   title: string;
   segments: string[];
+  audioUrls?: (string | null)[];
 }) {
   const [index, setIndex] = useState(0);
 
@@ -37,6 +39,7 @@ export function FillBlankDrillStudy({
         drillId={drillId}
         segmentIndex={index}
         template={segments[index]}
+        audioUrl={audioUrls?.[index] ?? null}
       />
 
       {segments.length > 1 && (
@@ -65,10 +68,12 @@ function FillBlankPiece({
   drillId,
   segmentIndex,
   template,
+  audioUrl,
 }: {
   drillId: string;
   segmentIndex: number;
   template: string;
+  audioUrl: string | null;
 }) {
   const segments = useMemo(() => parseClozeTemplate(template), [template]);
   const blankCount = segments.filter((s) => "blank" in s).length;
@@ -141,6 +146,8 @@ function FillBlankPiece({
 
   return (
     <div className="flex flex-col gap-4 rounded-2xl border border-black/[.08] bg-[#fdfaf3] p-6 dark:border-white/[.145] dark:bg-zinc-900">
+      {audioUrl && <audio controls src={audioUrl} className="w-full" />}
+
       <p dir="rtl" className="whitespace-pre-wrap text-xl leading-loose">
         {segments.map((seg, i) => {
           if ("text" in seg) {

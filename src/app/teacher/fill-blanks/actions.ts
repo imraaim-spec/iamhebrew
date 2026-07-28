@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { generateHebrewAudioUrl } from "@/lib/tts";
+import { extractSpeakableText } from "@/lib/cloze";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -13,6 +15,18 @@ function parseSegments(raw: string): string[] {
     .split(/\n[ \t]*\n[ \t]*\n+/)
     .map((b) => b.trim())
     .filter(Boolean);
+}
+
+async function generateAudioUrls(
+  supabase: SupabaseServerClient,
+  segments: string[]
+): Promise<(string | null)[]> {
+  const urls: (string | null)[] = [];
+  for (const segment of segments) {
+    const speakable = extractSpeakableText(segment);
+    urls.push(await generateHebrewAudioUrl(supabase, "fill-blanks", speakable));
+  }
+  return urls;
 }
 
 async function saveAssignments(
@@ -51,9 +65,11 @@ export async function createFillBlankDrill(formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) return;
 
+  const audioUrls = await generateAudioUrls(supabase, segments);
+
   const { data: drill, error } = await supabase
     .from("fill_blank_drills")
-    .insert({ title: name, description, segments, created_by: user.id })
+    .insert({ title: name, description, segments, audio_urls: audioUrls, created_by: user.id })
     .select("id")
     .single();
   if (error) throw new Error(`Failed to save drill: ${error.message}`);
@@ -73,9 +89,11 @@ export async function updateFillBlankDrill(drillId: string, formData: FormData) 
   if (segments.length === 0) return;
 
   const supabase = await createClient();
+  const audioUrls = await generateAudioUrls(supabase, segments);
+
   const { error } = await supabase
     .from("fill_blank_drills")
-    .update({ title: name, description, segments })
+    .update({ title: name, description, segments, audio_urls: audioUrls })
     .eq("id", drillId);
   if (error) throw new Error(`Failed to update drill: ${error.message}`);
 
@@ -88,16 +106,19 @@ export async function deleteFillBlankSegment(drillId: string, segmentIndex: numb
 
   const { data: drill, error: fetchError } = await supabase
     .from("fill_blank_drills")
-    .select("segments")
+    .select("segments, audio_urls")
     .eq("id", drillId)
     .single();
   if (fetchError) throw new Error(`Failed to load drill: ${fetchError.message}`);
 
   const segments = (drill.segments as string[]).filter((_, i) => i !== segmentIndex);
+  const audioUrls = ((drill.audio_urls as (string | null)[]) ?? []).filter(
+    (_, i) => i !== segmentIndex
+  );
 
   const { error } = await supabase
     .from("fill_blank_drills")
-    .update({ segments })
+    .update({ segments, audio_urls: audioUrls })
     .eq("id", drillId);
   if (error) throw new Error(`Failed to remove piece: ${error.message}`);
 

@@ -12,7 +12,7 @@ export default async function FillBlankDrillStudyPage({
 
   const { data: drill } = await supabase
     .from("fill_blank_drills")
-    .select("id, title, segments")
+    .select("id, title, segments, audio_urls")
     .eq("id", id)
     .single();
 
@@ -24,6 +24,7 @@ export default async function FillBlankDrillStudyPage({
         drillId={drill.id}
         title={drill.title}
         segments={drill.segments as string[]}
+        audioUrls={drill.audio_urls as (string | null)[]}
       />
     </div>
   );
