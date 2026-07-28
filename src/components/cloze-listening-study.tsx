@@ -136,7 +136,7 @@ export function ClozeListeningStudy({ exercise }: { exercise: ListeningExercise 
               value={value}
               onChange={(e) => updateInput(bi, e.target.value)}
               dir="rtl"
-              className={`mx-1 inline-block w-24 rounded border bg-white px-2 py-0.5 text-center align-baseline dark:bg-black ${style}`}
+              className={`mx-1 inline-block w-48 rounded border bg-white px-3 py-1 text-center align-baseline text-xl dark:bg-black ${style}`}
             />
           );
         })}

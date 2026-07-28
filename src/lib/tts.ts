@@ -23,10 +23,16 @@ export async function generateHebrewAudioUrl(
         }),
       }
     );
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error("TTS request failed", res.status, await res.text());
+      return null;
+    }
 
     const { audioContent } = (await res.json()) as { audioContent?: string };
-    if (!audioContent) return null;
+    if (!audioContent) {
+      console.error("TTS response had no audioContent");
+      return null;
+    }
 
     const buffer = Buffer.from(audioContent, "base64");
     const path = `${storagePrefix}/${crypto.randomUUID()}.mp3`;
@@ -34,11 +40,15 @@ export async function generateHebrewAudioUrl(
     const { error } = await supabase.storage
       .from("audio")
       .upload(path, buffer, { contentType: "audio/mpeg" });
-    if (error) return null;
+    if (error) {
+      console.error("TTS audio upload failed", error.message);
+      return null;
+    }
 
     const { data } = supabase.storage.from("audio").getPublicUrl(path);
     return data.publicUrl;
-  } catch {
+  } catch (err) {
+    console.error("TTS generation threw", err);
     return null;
   }
 }
