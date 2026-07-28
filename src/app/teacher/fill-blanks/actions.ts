@@ -4,23 +4,45 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-export async function createFillBlankDrill(formData: FormData) {
-  const raw = (formData.get("batch") as string) || "";
-  const lines = raw.split(/\r?\n/);
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
-  // First non-empty line is the drill's title.
-  let i = 0;
-  while (i < lines.length && !lines[i].trim()) i++;
-  const title = lines[i]?.trim();
-  if (!title) return;
-  const rest = lines.slice(i + 1).join("\n");
-
+function parseSegments(raw: string): string[] {
   // Two-or-more blank lines mark a new piece; a single blank line stays
   // inside one (e.g. between an example question and its answer).
-  const segments = rest
+  return raw
     .split(/\n[ \t]*\n[ \t]*\n+/)
     .map((b) => b.trim())
     .filter(Boolean);
+}
+
+async function saveAssignments(
+  supabase: SupabaseServerClient,
+  drillId: string,
+  formData: FormData
+) {
+  const everyone = formData.get("everyone") === "on";
+  const studentIds = formData.getAll("students").map((v) => String(v));
+
+  if (everyone) {
+    const { error } = await supabase
+      .from("fill_blank_assignments")
+      .insert({ drill_id: drillId, student_id: null });
+    if (error) throw new Error(`Failed to save assignment: ${error.message}`);
+  } else if (studentIds.length > 0) {
+    const { error } = await supabase.from("fill_blank_assignments").insert(
+      studentIds.map((studentId) => ({ drill_id: drillId, student_id: studentId }))
+    );
+    if (error) throw new Error(`Failed to save assignment: ${error.message}`);
+  }
+}
+
+export async function createFillBlankDrill(formData: FormData) {
+  const name = (formData.get("name") as string)?.trim();
+  const description = (formData.get("description") as string)?.trim() || null;
+  const raw = (formData.get("batch") as string) || "";
+  if (!name) return;
+
+  const segments = parseSegments(raw);
   if (segments.length === 0) return;
 
   const supabase = await createClient();
@@ -29,14 +51,36 @@ export async function createFillBlankDrill(formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) return;
 
-  const { error } = await supabase.from("fill_blank_drills").insert({
-    title,
-    segments,
-    created_by: user.id,
-  });
+  const { data: drill, error } = await supabase
+    .from("fill_blank_drills")
+    .insert({ title: name, description, segments, created_by: user.id })
+    .select("id")
+    .single();
   if (error) throw new Error(`Failed to save drill: ${error.message}`);
 
+  await saveAssignments(supabase, drill.id, formData);
+
   revalidatePath("/teacher/fill-blanks");
+}
+
+export async function updateFillBlankDrill(drillId: string, formData: FormData) {
+  const name = (formData.get("name") as string)?.trim();
+  const description = (formData.get("description") as string)?.trim() || null;
+  const raw = (formData.get("batch") as string) || "";
+  if (!name) return;
+
+  const segments = parseSegments(raw);
+  if (segments.length === 0) return;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("fill_blank_drills")
+    .update({ title: name, description, segments })
+    .eq("id", drillId);
+  if (error) throw new Error(`Failed to update drill: ${error.message}`);
+
+  revalidatePath(`/teacher/fill-blanks/${drillId}`);
+  redirect(`/teacher/fill-blanks/${drillId}`);
 }
 
 export async function deleteFillBlankSegment(drillId: string, segmentIndex: number) {
@@ -70,8 +114,6 @@ export async function deleteFillBlankDrill(drillId: string) {
 
 export async function setFillBlankAssignments(drillId: string, formData: FormData) {
   const supabase = await createClient();
-  const everyone = formData.get("everyone") === "on";
-  const studentIds = formData.getAll("students").map((v) => String(v));
 
   const { error: deleteError } = await supabase
     .from("fill_blank_assignments")
@@ -81,17 +123,7 @@ export async function setFillBlankAssignments(drillId: string, formData: FormDat
     throw new Error(`Failed to clear previous assignment: ${deleteError.message}`);
   }
 
-  if (everyone) {
-    const { error } = await supabase
-      .from("fill_blank_assignments")
-      .insert({ drill_id: drillId, student_id: null });
-    if (error) throw new Error(`Failed to save assignment: ${error.message}`);
-  } else if (studentIds.length > 0) {
-    const { error } = await supabase.from("fill_blank_assignments").insert(
-      studentIds.map((studentId) => ({ drill_id: drillId, student_id: studentId }))
-    );
-    if (error) throw new Error(`Failed to save assignment: ${error.message}`);
-  }
+  await saveAssignments(supabase, drillId, formData);
 
   revalidatePath(`/teacher/fill-blanks/${drillId}`);
 }

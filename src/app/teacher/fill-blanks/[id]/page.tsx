@@ -18,7 +18,7 @@ export default async function FillBlankDrillDetailPage({
 
   const { data: drill } = await supabase
     .from("fill_blank_drills")
-    .select("id, title, segments")
+    .select("id, title, description, segments")
     .eq("id", id)
     .single();
 
@@ -51,13 +51,26 @@ export default async function FillBlankDrillDetailPage({
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
       <div className="flex items-start justify-between gap-4">
-        <h1 className="text-2xl font-semibold">{drill.title}</h1>
-        <Link
-          href={`/teacher/fill-blanks/${id}/study`}
-          className="shrink-0 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
-        >
-          Preview
-        </Link>
+        <div>
+          <h1 className="text-2xl font-semibold">{drill.title}</h1>
+          {drill.description && (
+            <p className="text-zinc-600 dark:text-zinc-400">{drill.description}</p>
+          )}
+        </div>
+        <div className="flex shrink-0 gap-2">
+          <Link
+            href={`/teacher/fill-blanks/${id}/edit`}
+            className="rounded-full border border-black/[.08] px-4 py-2 text-sm dark:border-white/[.145]"
+          >
+            Edit
+          </Link>
+          <Link
+            href={`/teacher/fill-blanks/${id}/study`}
+            className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+          >
+            Preview
+          </Link>
+        </div>
       </div>
 
       <div className="flex flex-col gap-2">
