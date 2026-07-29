@@ -77,6 +77,7 @@ export async function createFillBlankDrill(formData: FormData) {
   await saveAssignments(supabase, drill.id, formData);
 
   revalidatePath("/teacher/fill-blanks");
+  redirect(`/teacher/fill-blanks/${drill.id}`);
 }
 
 export async function updateFillBlankDrill(drillId: string, formData: FormData) {
