@@ -5,6 +5,7 @@ import {
   saveLessonNote,
   setStudentAssignments,
 } from "../actions";
+import { assignCourseToStudent } from "@/app/teacher/courses/actions";
 
 type CardContent = {
   front?: string;
@@ -131,6 +132,11 @@ export default async function StudentProgressPage({
 
   const setStudentAssignmentsWithId = setStudentAssignments.bind(null, id);
   const saveLessonNoteWithId = saveLessonNote.bind(null, id);
+
+  const { data: courses } = await supabase
+    .from("courses")
+    .select("id, title, description")
+    .order("title", { ascending: true });
 
   const { data: lessonNotes } = await supabase
     .from("lesson_notes")
@@ -334,6 +340,41 @@ export default async function StudentProgressPage({
           Save assignments
         </button>
       </form>
+
+      {courses && courses.length > 0 && (
+        <div className="flex flex-col gap-2 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]">
+          <h2 className="font-medium">Assign a course</h2>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Instantly assigns everything bundled in that course to this
+            student.
+          </p>
+          {courses.map((course) => {
+            const assignCourseWithIds = assignCourseToStudent.bind(null, course.id, id);
+            return (
+              <form
+                key={course.id}
+                action={assignCourseWithIds}
+                className="flex items-center justify-between gap-4 border-t border-black/[.08] pt-2 dark:border-white/[.145]"
+              >
+                <div>
+                  <div className="font-medium">{course.title}</div>
+                  {course.description && (
+                    <div className="text-sm text-zinc-600 dark:text-zinc-400">
+                      {course.description}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  className="shrink-0 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+                >
+                  Assign
+                </button>
+              </form>
+            );
+          })}
+        </div>
+      )}
 
       <form
         action={saveLessonNoteWithId}

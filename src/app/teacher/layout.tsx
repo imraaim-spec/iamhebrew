@@ -41,6 +41,9 @@ export default async function TeacherLayout({
         <Link href="/teacher/fill-blanks" className="text-sm font-medium">
           Fill in the Blanks
         </Link>
+        <Link href="/teacher/courses" className="text-sm font-medium">
+          Courses
+        </Link>
         <Link href="/" className="ml-auto text-sm text-zinc-500">
           Back to site
         </Link>
