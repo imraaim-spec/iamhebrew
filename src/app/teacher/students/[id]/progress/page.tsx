@@ -1,6 +1,10 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { setStudentAssignments } from "../actions";
+import {
+  deleteLessonNote,
+  saveLessonNote,
+  setStudentAssignments,
+} from "../actions";
 
 type CardContent = {
   front?: string;
@@ -28,10 +32,13 @@ function cardLabel(content: CardContent | undefined) {
 
 export default async function StudentProgressPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ edit_date?: string }>;
 }) {
   const { id } = await params;
+  const { edit_date: editDate } = await searchParams;
   const supabase = await createClient();
 
   const { data: student } = await supabase
@@ -55,6 +62,10 @@ export default async function StudentProgressPage({
     .from("verb_drills")
     .select("id, infinitive, translation")
     .order("infinitive", { ascending: true });
+  const { data: fillBlankDrills } = await supabase
+    .from("fill_blank_drills")
+    .select("id, title")
+    .order("title", { ascending: true });
 
   const { data: deckAssignments } = await supabase
     .from("assignments")
@@ -64,6 +75,9 @@ export default async function StudentProgressPage({
     .select("exercise_id, student_id");
   const { data: verbAssignments } = await supabase
     .from("verb_drill_assignments")
+    .select("drill_id, student_id");
+  const { data: fillBlankAssignments } = await supabase
+    .from("fill_blank_assignments")
     .select("drill_id, student_id");
 
   const deckStatus = new Map(
@@ -102,8 +116,32 @@ export default async function StudentProgressPage({
       ] as const;
     })
   );
+  const fillBlankStatus = new Map(
+    (fillBlankDrills ?? []).map((d) => {
+      const rows = (fillBlankAssignments ?? []).filter((a) => a.drill_id === d.id);
+      return [
+        d.id,
+        {
+          everyone: rows.some((r) => r.student_id === null),
+          assigned: rows.some((r) => r.student_id === id),
+        },
+      ] as const;
+    })
+  );
 
   const setStudentAssignmentsWithId = setStudentAssignments.bind(null, id);
+  const saveLessonNoteWithId = saveLessonNote.bind(null, id);
+
+  const { data: lessonNotes } = await supabase
+    .from("lesson_notes")
+    .select("id, lesson_date, notes_text, notion_url")
+    .eq("student_id", id)
+    .order("lesson_date", { ascending: false });
+
+  const noteBeingEdited = editDate
+    ? (lessonNotes ?? []).find((n) => n.lesson_date === editDate)
+    : null;
+  const todayIso = new Date().toISOString().slice(0, 10);
 
   const { data: attempts } = await supabase
     .from("attempts")
@@ -251,12 +289,43 @@ export default async function StudentProgressPage({
           </div>
         )}
 
-        {!decks?.length && !listeningExercises?.length && !verbDrills?.length && (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Nothing created yet — build a deck, listening exercise, or verb
-            drill first.
-          </p>
+        {fillBlankDrills && fillBlankDrills.length > 0 && (
+          <div>
+            <h3 className="mb-1 text-sm font-medium text-zinc-500">
+              Fill in the Blanks
+            </h3>
+            <div className="flex flex-col gap-1">
+              {fillBlankDrills.map((drill) => {
+                const status = fillBlankStatus.get(drill.id);
+                return (
+                  <label key={drill.id} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      name="fillblanks"
+                      value={drill.id}
+                      defaultChecked={status?.assigned || status?.everyone}
+                      disabled={status?.everyone}
+                    />
+                    {drill.title}
+                    {status?.everyone && (
+                      <span className="text-xs text-zinc-400">(everyone)</span>
+                    )}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
         )}
+
+        {!decks?.length &&
+          !listeningExercises?.length &&
+          !verbDrills?.length &&
+          !fillBlankDrills?.length && (
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Nothing created yet — build a deck, listening exercise, verb
+              drill, or fill-in-the-blank drill first.
+            </p>
+          )}
 
         <button
           type="submit"
@@ -265,6 +334,102 @@ export default async function StudentProgressPage({
           Save assignments
         </button>
       </form>
+
+      <form
+        action={saveLessonNoteWithId}
+        className="flex flex-col gap-3 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]"
+      >
+        <h2 className="font-medium">
+          {noteBeingEdited ? "Edit lesson note" : "Add a lesson note"}
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          One note per day — the student&apos;s wall groups everything
+          assigned that day under this note. Paste a Notion link only if
+          that page is shared publicly (&quot;Share to web&quot;), otherwise
+          the student won&apos;t be able to open it.
+        </p>
+        <label className="text-sm text-zinc-600 dark:text-zinc-400">
+          Date
+          <input
+            type="date"
+            name="lesson_date"
+            defaultValue={noteBeingEdited?.lesson_date ?? todayIso}
+            required
+            className="mt-1 block rounded border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+          />
+        </label>
+        <textarea
+          name="notes_text"
+          defaultValue={noteBeingEdited?.notes_text ?? ""}
+          placeholder="Notes for this lesson (optional)"
+          rows={4}
+          dir="auto"
+          className="rounded border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+        />
+        <input
+          name="notion_url"
+          defaultValue={noteBeingEdited?.notion_url ?? ""}
+          placeholder="Notion page link (optional)"
+          className="rounded border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+        />
+        <button
+          type="submit"
+          className="self-start rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+        >
+          {noteBeingEdited ? "Save changes" : "Add note"}
+        </button>
+      </form>
+
+      {lessonNotes && lessonNotes.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {lessonNotes.map((note) => {
+            const deleteLessonNoteWithIds = deleteLessonNote.bind(null, note.id, id);
+            return (
+              <div
+                key={note.id}
+                className="flex items-start justify-between gap-4 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]"
+              >
+                <div>
+                  <div className="text-xs font-medium uppercase text-zinc-500">
+                    {new Date(note.lesson_date).toLocaleDateString()}
+                  </div>
+                  {note.notes_text && (
+                    <p dir="auto" className="whitespace-pre-wrap text-sm">
+                      {note.notes_text}
+                    </p>
+                  )}
+                  {note.notion_url && (
+                    <a
+                      href={note.notion_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+                    >
+                      Notion link
+                    </a>
+                  )}
+                </div>
+                <div className="flex shrink-0 gap-3">
+                  <a
+                    href={`?edit_date=${note.lesson_date}`}
+                    className="text-sm text-zinc-500 hover:underline"
+                  >
+                    Edit
+                  </a>
+                  <form action={deleteLessonNoteWithIds}>
+                    <button
+                      type="submit"
+                      className="text-sm text-red-600 hover:underline dark:text-red-400"
+                    >
+                      Delete
+                    </button>
+                  </form>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <div className="rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]">
         <h2 className="mb-2 font-medium">Overall</h2>

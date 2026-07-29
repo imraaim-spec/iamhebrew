@@ -27,7 +27,7 @@ export default async function StudentLayout({
       <nav className="flex items-center gap-6 border-b border-black/[.08] px-8 py-4 dark:border-white/[.145]">
         <span className="font-semibold">iamhebrew</span>
         <Link href="/student" className="text-sm font-medium">
-          My Assignments
+          My Wall
         </Link>
         <Link href="/" className="ml-auto text-sm text-zinc-500">
           Back to site
