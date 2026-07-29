@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { createFillBlankDrill } from "./actions";
+import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
+import { createFillBlankDrill, deleteFillBlankDrill } from "./actions";
 
 export default async function FillBlankDrillsPage() {
   const supabase = await createClient();
@@ -100,25 +101,33 @@ export default async function FillBlankDrillsPage() {
 
       <ul className="flex flex-col gap-2">
         {drills && drills.length > 0 ? (
-          drills.map((drill) => (
-            <li key={drill.id}>
-              <Link
-                href={`/teacher/fill-blanks/${drill.id}`}
-                className="block rounded-lg border border-black/[.08] p-4 hover:bg-black/[.02] dark:border-white/[.145] dark:hover:bg-white/[.03]"
+          drills.map((drill) => {
+            const deleteFillBlankDrillWithId = deleteFillBlankDrill.bind(null, drill.id);
+            return (
+              <li
+                key={drill.id}
+                className="flex items-center justify-between gap-4 rounded-lg border border-black/[.08] p-4 hover:bg-black/[.02] dark:border-white/[.145] dark:hover:bg-white/[.03]"
               >
-                <div className="font-medium">{drill.title}</div>
-                {drill.description && (
-                  <div className="text-sm text-zinc-600 dark:text-zinc-400">
-                    {drill.description}
+                <Link href={`/teacher/fill-blanks/${drill.id}`} className="flex-1">
+                  <div className="font-medium">{drill.title}</div>
+                  {drill.description && (
+                    <div className="text-sm text-zinc-600 dark:text-zinc-400">
+                      {drill.description}
+                    </div>
+                  )}
+                  <div className="text-sm text-zinc-500">
+                    {(drill.segments as string[]).length} piece
+                    {(drill.segments as string[]).length === 1 ? "" : "s"}
                   </div>
-                )}
-                <div className="text-sm text-zinc-500">
-                  {(drill.segments as string[]).length} piece
-                  {(drill.segments as string[]).length === 1 ? "" : "s"}
-                </div>
-              </Link>
-            </li>
-          ))
+                </Link>
+                <ConfirmDeleteButton
+                  action={deleteFillBlankDrillWithId}
+                  label="Delete"
+                  confirmMessage={`Delete "${drill.title}" and all its pieces? This can't be undone.`}
+                />
+              </li>
+            );
+          })
         ) : (
           <p className="text-zinc-600 dark:text-zinc-400">
             No drills yet — create your first one above.
