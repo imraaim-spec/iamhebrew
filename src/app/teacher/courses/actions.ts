@@ -4,6 +4,39 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+async function ensureAssigned(
+  supabase: SupabaseServerClient,
+  table: string,
+  idColumn: string,
+  itemIds: string[],
+  studentId: string
+) {
+  if (itemIds.length === 0) return;
+  const rows = itemIds.map((item_id) => ({ [idColumn]: item_id, student_id: studentId }));
+  const { error } = await supabase
+    .from(table)
+    .upsert(rows, { onConflict: `${idColumn},student_id`, ignoreDuplicates: true });
+  if (error) throw new Error(`Failed to assign: ${error.message}`);
+}
+
+async function ensureUnassigned(
+  supabase: SupabaseServerClient,
+  table: string,
+  idColumn: string,
+  itemIds: string[],
+  studentId: string
+) {
+  if (itemIds.length === 0) return;
+  const { error } = await supabase
+    .from(table)
+    .delete()
+    .eq("student_id", studentId)
+    .in(idColumn, itemIds);
+  if (error) throw new Error(`Failed to unassign: ${error.message}`);
+}
+
 export async function createCourse(formData: FormData) {
   const title = (formData.get("title") as string)?.trim();
   const description = (formData.get("description") as string)?.trim() || null;
@@ -106,5 +139,45 @@ export async function assignCourseToStudent(courseId: string, studentId: string)
   }
 
   revalidatePath(`/teacher/students/${studentId}/progress`);
+  revalidatePath("/student");
+}
+
+export async function setCourseAssignments(courseId: string, formData: FormData) {
+  const supabase = await createClient();
+  const checkedStudentIds = new Set(formData.getAll("students").map(String));
+
+  const { data: allStudents, error: studentsError } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("role", "student");
+  if (studentsError) throw new Error(`Failed to load students: ${studentsError.message}`);
+
+  const { data: items, error: itemsError } = await supabase
+    .from("course_items")
+    .select("item_type, item_id")
+    .eq("course_id", courseId);
+  if (itemsError) throw new Error(`Failed to load course items: ${itemsError.message}`);
+
+  const deckItemIds = (items ?? []).filter((i) => i.item_type === "deck").map((i) => i.item_id);
+  const listeningItemIds = (items ?? [])
+    .filter((i) => i.item_type === "listening")
+    .map((i) => i.item_id);
+  const verbItemIds = (items ?? []).filter((i) => i.item_type === "verb").map((i) => i.item_id);
+  const fillBlankItemIds = (items ?? [])
+    .filter((i) => i.item_type === "fillblank")
+    .map((i) => i.item_id);
+
+  for (const student of allStudents ?? []) {
+    const studentId = student.id;
+    const shouldBeAssigned = checkedStudentIds.has(studentId);
+    const action = shouldBeAssigned ? ensureAssigned : ensureUnassigned;
+
+    await action(supabase, "assignments", "deck_id", deckItemIds, studentId);
+    await action(supabase, "listening_assignments", "exercise_id", listeningItemIds, studentId);
+    await action(supabase, "verb_drill_assignments", "drill_id", verbItemIds, studentId);
+    await action(supabase, "fill_blank_assignments", "drill_id", fillBlankItemIds, studentId);
+  }
+
+  revalidatePath(`/teacher/courses/${courseId}`);
   revalidatePath("/student");
 }
