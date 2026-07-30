@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { TENSE_SLOTS, TENSE_LABELS, type Tense } from "@/lib/hebrew-verbs";
 
-const inputClass =
-  "rounded border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black";
+const inputClass = "rounded-sm border border-border bg-surface px-3 py-2 text-text";
 
 export function VerbDrillForm({
   action,
@@ -16,9 +15,9 @@ export function VerbDrillForm({
   return (
     <form
       action={action}
-      className="flex flex-col gap-3 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]"
+      className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4"
     >
-      <h2 className="font-medium">New verb drill</h2>
+      <h2 className="font-heading font-bold">New verb drill</h2>
 
       <input
         name="infinitive"
@@ -49,7 +48,7 @@ export function VerbDrillForm({
 
       <div className="grid grid-cols-2 gap-2">
         {TENSE_SLOTS[tense].map((slot) => (
-          <label key={slot.key} className="text-sm text-zinc-600 dark:text-zinc-400">
+          <label key={slot.key} className="text-sm text-text-muted">
             {slot.label}
             <input
               name={`form_${slot.key}`}
@@ -59,14 +58,14 @@ export function VerbDrillForm({
           </label>
         ))}
       </div>
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-text-faint">
         Fill in as many forms as you have — audio is generated
         automatically for each one you enter. At least 2 are needed.
       </p>
 
       <button
         type="submit"
-        className="self-start rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+        className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
       >
         Create verb drill
       </button>

@@ -12,7 +12,7 @@ export default async function ListeningExercisesPage() {
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
-      <h1 className="text-2xl font-semibold">Listening Exercises</h1>
+      <h1 className="text-2xl">Listening Exercises</h1>
 
       <ListeningExerciseForm action={createListeningExercise} />
 
@@ -22,14 +22,14 @@ export default async function ListeningExercisesPage() {
             <li key={exercise.id}>
               <Link
                 href={`/teacher/listening/${exercise.id}`}
-                className="block rounded-lg border border-black/[.08] p-4 hover:bg-black/[.02] dark:border-white/[.145] dark:hover:bg-white/[.03]"
+                className="block rounded-md border border-border bg-surface p-4 hover:bg-bg-alt"
               >
                 <div className="font-medium">{exercise.title}</div>
               </Link>
             </li>
           ))
         ) : (
-          <p className="text-zinc-600 dark:text-zinc-400">
+          <p className="text-text-muted">
             No listening exercises yet — create your first one above.
           </p>
         )}

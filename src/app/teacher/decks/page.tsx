@@ -11,27 +11,27 @@ export default async function DecksPage() {
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
-      <h1 className="text-2xl font-semibold">Decks</h1>
+      <h1 className="text-2xl">Decks</h1>
 
       <form
         action={createDeck}
-        className="flex flex-col gap-3 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]"
+        className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4"
       >
-        <h2 className="font-medium">New deck</h2>
+        <h2 className="font-heading font-bold">New deck</h2>
         <input
           name="title"
           placeholder="Title, e.g. Lesson 5 — Verbs"
           required
-          className="rounded border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+          className="rounded-sm border border-border bg-surface px-3 py-2 text-text"
         />
         <textarea
           name="description"
           placeholder="Description (optional)"
-          className="rounded border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+          className="rounded-sm border border-border bg-surface px-3 py-2 text-text"
         />
         <button
           type="submit"
-          className="self-start rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+          className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
         >
           Create deck
         </button>
@@ -43,21 +43,17 @@ export default async function DecksPage() {
             <li key={deck.id}>
               <Link
                 href={`/teacher/decks/${deck.id}`}
-                className="block rounded-lg border border-black/[.08] p-4 hover:bg-black/[.02] dark:border-white/[.145] dark:hover:bg-white/[.03]"
+                className="block rounded-md border border-border bg-surface p-4 hover:bg-bg-alt"
               >
                 <div className="font-medium">{deck.title}</div>
                 {deck.description && (
-                  <div className="text-sm text-zinc-600 dark:text-zinc-400">
-                    {deck.description}
-                  </div>
+                  <div className="text-sm text-text-muted">{deck.description}</div>
                 )}
               </Link>
             </li>
           ))
         ) : (
-          <p className="text-zinc-600 dark:text-zinc-400">
-            No decks yet — create your first one above.
-          </p>
+          <p className="text-text-muted">No decks yet — create your first one above.</p>
         )}
       </ul>
     </div>

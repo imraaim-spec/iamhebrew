@@ -121,16 +121,16 @@ export default async function StudentHomePage() {
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold">My Wall</h1>
+      <h1 className="text-2xl">My Wall</h1>
 
       {sortedDays.length > 0 ? (
         <div className="flex flex-col gap-6">
           {sortedDays.map((day) => (
             <div
               key={day.date}
-              className="flex flex-col gap-3 rounded-2xl border border-black/[.08] bg-white p-5 shadow-sm dark:border-white/[.145] dark:bg-zinc-900"
+              className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5 shadow-sm"
             >
-              <div className="text-sm font-medium text-zinc-500">
+              <div className="text-sm font-semibold text-text-faint">
                 {new Date(day.date).toLocaleDateString(undefined, {
                   weekday: "long",
                   year: "numeric",
@@ -148,7 +148,7 @@ export default async function StudentHomePage() {
               {day.notionUrl && (
                 <iframe
                   src={day.notionUrl}
-                  className="h-96 w-full rounded-lg border border-black/[.08] dark:border-white/[.145]"
+                  className="h-96 w-full rounded-md border border-border"
                 />
               )}
 
@@ -158,9 +158,9 @@ export default async function StudentHomePage() {
                     <Link
                       key={`${task.type}-${task.id}`}
                       href={task.href}
-                      className="block rounded-lg border border-black/[.08] p-3 hover:bg-black/[.02] dark:border-white/[.145] dark:hover:bg-white/[.05]"
+                      className="block rounded-md border border-border p-3 hover:bg-bg-alt"
                     >
-                      <div className="text-xs font-medium uppercase text-zinc-500">
+                      <div className="text-xs font-semibold uppercase text-text-faint">
                         {TYPE_LABELS[task.type]}
                       </div>
                       <div dir="auto" className="font-medium">
@@ -174,7 +174,7 @@ export default async function StudentHomePage() {
           ))}
         </div>
       ) : (
-        <p className="text-zinc-600 dark:text-zinc-400">
+        <p className="text-text-muted">
           Nothing here yet — check back after your next lesson.
         </p>
       )}

@@ -18,28 +18,28 @@ export default async function FillBlankDrillsPage() {
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
-      <h1 className="text-2xl font-semibold">Fill in the Blanks</h1>
+      <h1 className="text-2xl">Fill in the Blanks</h1>
 
       <form
         action={createFillBlankDrill}
-        className="flex flex-col gap-3 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]"
+        className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4"
       >
-        <h2 className="font-medium">New drill</h2>
+        <h2 className="font-heading font-bold">New drill</h2>
 
         <input
           name="name"
           placeholder="Name, e.g. Geography basics"
           required
-          className="rounded border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+          className="rounded-sm border border-border bg-surface px-3 py-2 text-text"
         />
         <textarea
           name="description"
           placeholder="Description (optional)"
           rows={2}
-          className="rounded border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+          className="rounded-sm border border-border bg-surface px-3 py-2 text-text"
         />
 
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm text-text-muted">
           Mark each blank with square brackets around the correct answer
           (use a slash for more than one acceptable answer, e.g.{" "}
           <code>[הולך/צועד]</code>). Separate the drill&apos;s pieces with{" "}
@@ -48,7 +48,7 @@ export default async function FillBlankDrillsPage() {
           answer). Each piece becomes its own numbered screen the student
           pages through.
         </p>
-        <pre className="rounded bg-black/[.03] p-2 text-xs text-zinc-600 dark:bg-white/[.05] dark:text-zinc-400">
+        <pre className="rounded-sm bg-bg-alt p-2 text-xs text-text-muted">
 {`איפה פריז?
 
 בצרפת
@@ -68,17 +68,17 @@ export default async function FillBlankDrillsPage() {
           placeholder="Paste your pieces here..."
           required
           dir="auto"
-          className="rounded border border-black/[.08] px-3 py-2 font-mono text-sm dark:border-white/[.145] dark:bg-black"
+          className="rounded-sm border border-border bg-surface px-3 py-2 font-mono text-sm text-text"
         />
 
-        <div className="flex flex-col gap-1 border-t border-black/[.08] pt-3 dark:border-white/[.145]">
+        <div className="flex flex-col gap-1 border-t border-border pt-3">
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" name="everyone" />
             Visible to all students
           </label>
           {students && students.length > 0 && (
             <>
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              <p className="text-sm text-text-muted">
                 Or choose specific students:
               </p>
               {students.map((student) => (
@@ -93,7 +93,7 @@ export default async function FillBlankDrillsPage() {
 
         <button
           type="submit"
-          className="self-start rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+          className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
         >
           Create drill
         </button>
@@ -106,16 +106,16 @@ export default async function FillBlankDrillsPage() {
             return (
               <li
                 key={drill.id}
-                className="flex items-center justify-between gap-4 rounded-lg border border-black/[.08] p-4 hover:bg-black/[.02] dark:border-white/[.145] dark:hover:bg-white/[.03]"
+                className="flex items-center justify-between gap-4 rounded-md border border-border bg-surface p-4 hover:bg-bg-alt"
               >
                 <Link href={`/teacher/fill-blanks/${drill.id}`} className="flex-1">
                   <div className="font-medium">{drill.title}</div>
                   {drill.description && (
-                    <div className="text-sm text-zinc-600 dark:text-zinc-400">
+                    <div className="text-sm text-text-muted">
                       {drill.description}
                     </div>
                   )}
-                  <div className="text-sm text-zinc-500">
+                  <div className="text-sm text-text-faint">
                     {(drill.segments as string[]).length} piece
                     {(drill.segments as string[]).length === 1 ? "" : "s"}
                   </div>
@@ -129,7 +129,7 @@ export default async function FillBlankDrillsPage() {
             );
           })
         ) : (
-          <p className="text-zinc-600 dark:text-zinc-400">
+          <p className="text-text-muted">
             No drills yet — create your first one above.
           </p>
         )}

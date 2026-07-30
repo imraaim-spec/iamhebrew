@@ -23,13 +23,13 @@ export default async function StudentLayout({
   if (!profile) redirect("/");
 
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-black">
-      <nav className="flex items-center gap-6 border-b border-black/[.08] px-8 py-4 dark:border-white/[.145]">
-        <span className="font-semibold">iamhebrew</span>
-        <Link href="/student" className="text-sm font-medium">
+    <div className="flex min-h-screen flex-col bg-bg">
+      <nav className="flex items-center gap-6 border-b border-border bg-surface px-8 py-4">
+        <span className="font-heading font-bold text-text">iamhebrew</span>
+        <Link href="/student" className="text-sm font-semibold text-text-muted hover:text-accent-2">
           My Wall
         </Link>
-        <Link href="/" className="ml-auto text-sm text-zinc-500">
+        <Link href="/" className="ml-auto text-sm text-text-faint hover:text-accent-2">
           Back to site
         </Link>
       </nav>

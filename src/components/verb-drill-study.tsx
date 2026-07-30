@@ -29,7 +29,7 @@ export function VerbDrillStudy({ drill }: { drill: Drill }) {
 
   if (filledKeys.length < 2) {
     return (
-      <p className="text-zinc-600 dark:text-zinc-400">
+      <p className="text-text-muted">
         This verb needs at least 2 filled-in forms to practice with.
       </p>
     );
@@ -48,10 +48,10 @@ export function VerbDrillStudy({ drill }: { drill: Drill }) {
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-black/[.08] bg-[#fdfaf3] p-6 dark:border-white/[.145] dark:bg-zinc-900">
+    <div className="flex flex-col gap-4 rounded-lg border border-border bg-bg-alt p-6">
       <div dir="auto">
         <div className="text-xl font-semibold">{drill.infinitive}</div>
-        <div className="text-sm text-zinc-600 dark:text-zinc-400">
+        <div className="text-sm text-text-muted">
           {drill.translation} · {TENSE_LABELS[drill.tense]}
         </div>
       </div>
@@ -63,7 +63,7 @@ export function VerbDrillStudy({ drill }: { drill: Drill }) {
           if (slot.key === blankKey) {
             return (
               <div key={slot.key} className="flex flex-col gap-1">
-                <span className="text-sm text-zinc-500">{slot.label}</span>
+                <span className="text-sm text-text-faint">{slot.label}</span>
                 <input
                   value={value}
                   onChange={(e) => {
@@ -71,16 +71,16 @@ export function VerbDrillStudy({ drill }: { drill: Drill }) {
                     setCorrect(null);
                   }}
                   dir="rtl"
-                  className={`rounded border px-3 py-2 dark:bg-black ${
+                  className={`rounded-sm border px-3 py-2 bg-surface text-text ${
                     correct === null
-                      ? "border-black/[.15] dark:border-white/[.2]"
+                      ? "border-border"
                       : correct
-                      ? "border-green-500 bg-green-50 dark:bg-green-950"
-                      : "border-red-500 bg-red-50 dark:bg-red-950"
+                      ? "border-green-500 bg-green-50"
+                      : "border-red-500 bg-red-50"
                   }`}
                 />
                 {correct === false && (
-                  <span className="text-xs text-zinc-500">
+                  <span className="text-xs text-text-faint">
                     Correct answer: {drill.forms[blankKey]}
                   </span>
                 )}
@@ -91,7 +91,7 @@ export function VerbDrillStudy({ drill }: { drill: Drill }) {
           const audioUrl = drill.audio_urls[slot.key];
           return (
             <div key={slot.key} className="flex flex-col gap-1">
-              <span className="text-sm text-zinc-500">{slot.label}</span>
+              <span className="text-sm text-text-faint">{slot.label}</span>
               <div className="flex items-center gap-2">
                 <span>{drill.forms[slot.key]}</span>
                 {audioUrl && <audio controls src={audioUrl} className="h-6 max-w-[8rem]" />}
@@ -104,13 +104,13 @@ export function VerbDrillStudy({ drill }: { drill: Drill }) {
       <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={check}
-          className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+          className="rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
         >
           בדוק
         </button>
         <button
           onClick={next}
-          className="rounded-full border border-black/[.08] px-4 py-2 text-sm dark:border-white/[.145]"
+          className="rounded-sm border border-border px-4 py-2 text-sm text-text-muted hover:bg-bg-alt"
         >
           צורה הבאה
         </button>

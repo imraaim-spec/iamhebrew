@@ -51,7 +51,7 @@ export function MultipleChoiceStudy({ cards }: { cards: Flashcard[] }) {
 
   if (cards.length < 2) {
     return (
-      <p className="text-zinc-600 dark:text-zinc-400">
+      <p className="text-text-muted">
         Add at least 2 flashcards to this deck to use multiple choice mode.
       </p>
     );
@@ -71,7 +71,7 @@ export function MultipleChoiceStudy({ cards }: { cards: Flashcard[] }) {
             setScore({ correct: 0, total: 0 });
             setDone(false);
           }}
-          className="rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background"
+          className="rounded-sm bg-accent px-5 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
         >
           Play again
         </button>
@@ -104,13 +104,13 @@ export function MultipleChoiceStudy({ cards }: { cards: Flashcard[] }) {
 
   return (
     <div className="flex flex-col items-center gap-6">
-      <p className="text-sm text-zinc-500">
+      <p className="text-sm text-text-faint">
         Question {index + 1} of {questions.length}
       </p>
 
       <div
         dir="auto"
-        className="flex h-32 w-full max-w-md items-center justify-center rounded-2xl border border-black/[.08] bg-white p-8 text-center text-2xl font-medium shadow-sm dark:border-white/[.145] dark:bg-zinc-900"
+        className="flex h-32 w-full max-w-md items-center justify-center rounded-lg border border-border bg-surface p-8 text-center text-2xl font-medium shadow-sm"
       >
         {question.card.content.front}
       </div>
@@ -124,11 +124,11 @@ export function MultipleChoiceStudy({ cards }: { cards: Flashcard[] }) {
           const isCorrectOption = option === question.correctAnswer;
           const isSelected = option === selected;
 
-          let style = "border-black/[.08] dark:border-white/[.145]";
+          let style = "border-border";
           if (answered && isCorrectOption) {
-            style = "border-green-500 bg-green-50 dark:bg-green-950";
+            style = "border-green-500 bg-green-50";
           } else if (answered && isSelected && !isCorrectOption) {
-            style = "border-red-500 bg-red-50 dark:bg-red-950";
+            style = "border-red-500 bg-red-50";
           }
 
           return (
@@ -137,7 +137,7 @@ export function MultipleChoiceStudy({ cards }: { cards: Flashcard[] }) {
               onClick={() => choose(option)}
               disabled={answered}
               dir="auto"
-              className={`rounded-lg border px-4 py-3 text-left ${style}`}
+              className={`rounded-md border px-4 py-3 text-left ${style}`}
             >
               {option}
             </button>
@@ -148,7 +148,7 @@ export function MultipleChoiceStudy({ cards }: { cards: Flashcard[] }) {
       {answered && (
         <button
           onClick={next}
-          className="rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background"
+          className="rounded-sm bg-accent px-5 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
         >
           Next
         </button>

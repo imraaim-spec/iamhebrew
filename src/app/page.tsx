@@ -20,32 +20,30 @@ export default async function Home() {
     : null;
 
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-center gap-6 py-32 px-16 bg-white dark:bg-black">
-        <h1 className="text-3xl font-semibold text-black dark:text-zinc-50">
+    <div className="flex flex-1 flex-col items-center justify-center bg-bg">
+      <main className="flex w-full max-w-md flex-col items-center gap-6 rounded-lg bg-surface p-12 text-center shadow-sm">
+        <h1 className="font-heading text-[length:var(--text-hero)] font-bold text-text">
           iamhebrew
         </h1>
 
         {!user && (
           <>
-            <p className="text-lg text-zinc-600 dark:text-zinc-400">
-              Not signed in.
-            </p>
+            <p className="text-text-muted">Not signed in.</p>
             <GoogleSignInButton />
           </>
         )}
 
         {user && profile && (
           <>
-            <p className="text-lg text-zinc-600 dark:text-zinc-400">
+            <p className="text-text-muted">
               Signed in as{" "}
-              <span className="font-medium">{profile.email}</span> (
-              {profile.role})
+              <span className="font-semibold text-text">{profile.email}</span>{" "}
+              ({profile.role})
             </p>
             {profile.role === "teacher" && (
               <Link
                 href="/teacher/decks"
-                className="flex h-12 items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
+                className="flex h-12 items-center justify-center gap-2 rounded-sm bg-accent px-6 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
               >
                 Go to teacher dashboard
               </Link>
@@ -53,7 +51,7 @@ export default async function Home() {
             {profile.role === "student" && (
               <Link
                 href="/student"
-                className="flex h-12 items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
+                className="flex h-12 items-center justify-center gap-2 rounded-sm bg-accent px-6 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover"
               >
                 Go to my wall
               </Link>
@@ -64,7 +62,7 @@ export default async function Home() {
 
         {user && !profile && (
           <>
-            <p className="max-w-sm text-center text-lg text-zinc-600 dark:text-zinc-400">
+            <p className="max-w-sm text-text-muted">
               This Google account isn&apos;t registered for this site yet.
               Contact your teacher to be added.
             </p>

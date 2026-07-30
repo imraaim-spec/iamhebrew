@@ -136,9 +136,9 @@ export default async function CourseDetailPage({
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-semibold">{course.title}</h1>
+        <h1 className="text-2xl">{course.title}</h1>
         {course.description && (
-          <p className="text-zinc-600 dark:text-zinc-400">{course.description}</p>
+          <p className="text-text-muted">{course.description}</p>
         )}
       </div>
 
@@ -149,10 +149,10 @@ export default async function CourseDetailPage({
             return (
               <li
                 key={item.id}
-                className="flex items-center justify-between gap-4 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]"
+                className="flex items-center justify-between gap-4 rounded-md border border-border bg-surface p-4"
               >
                 <div>
-                  <div className="text-xs font-medium uppercase text-zinc-500">
+                  <div className="text-xs font-semibold uppercase text-text-faint">
                     {TYPE_LABELS[item.item_type] ?? item.item_type}
                   </div>
                   <div dir="auto">{itemTitle(item.item_type, item.item_id)}</div>
@@ -160,7 +160,7 @@ export default async function CourseDetailPage({
                 <form action={removeItemWithIds}>
                   <button
                     type="submit"
-                    className="shrink-0 text-sm text-red-600 hover:underline dark:text-red-400"
+                    className="shrink-0 text-sm text-red-600 hover:underline"
                   >
                     Remove
                   </button>
@@ -169,7 +169,7 @@ export default async function CourseDetailPage({
             );
           })
         ) : (
-          <p className="text-zinc-600 dark:text-zinc-400">
+          <p className="text-text-muted">
             No items in this course yet.
           </p>
         )}
@@ -178,10 +178,10 @@ export default async function CourseDetailPage({
       {students && students.length > 0 && items && items.length > 0 && (
         <form
           action={setCourseAssignmentsWithId}
-          className="flex flex-col gap-3 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]"
+          className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4"
         >
-          <h2 className="font-medium">Assign to students</h2>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          <h2 className="font-heading font-bold">Assign to students</h2>
+          <p className="text-sm text-text-muted">
             Check a student to give them every item in this course. Uncheck
             to remove all of this course&apos;s items from that student.
           </p>
@@ -200,7 +200,7 @@ export default async function CourseDetailPage({
           </div>
           <button
             type="submit"
-            className="self-start rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+            className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
           >
             Save assignment
           </button>

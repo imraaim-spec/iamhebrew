@@ -15,10 +15,10 @@ export function StudySession({ cards }: { cards: Flashcard[] }) {
   );
 
   const tabClass = (active: boolean) =>
-    `rounded-full px-4 py-2 text-sm font-medium ${
+    `rounded-sm px-4 py-2 text-sm font-semibold ${
       active
-        ? "bg-foreground text-background"
-        : "border border-black/[.08] dark:border-white/[.145]"
+        ? "bg-accent text-bg"
+        : "border border-border text-text-muted"
     }`;
 
   return (

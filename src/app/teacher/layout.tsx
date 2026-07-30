@@ -23,28 +23,28 @@ export default async function TeacherLayout({
   if (!profile || profile.role !== "teacher") redirect("/");
 
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-black">
-      <nav className="flex items-center gap-6 border-b border-black/[.08] px-8 py-4 dark:border-white/[.145]">
-        <span className="font-semibold">iamhebrew — Teacher</span>
-        <Link href="/teacher/students" className="text-sm font-medium">
+    <div className="flex min-h-screen flex-col bg-bg">
+      <nav className="flex items-center gap-6 border-b border-border bg-surface px-8 py-4">
+        <span className="font-heading font-bold text-text">iamhebrew — Teacher</span>
+        <Link href="/teacher/students" className="text-sm font-semibold text-text-muted hover:text-accent-2">
           Students
         </Link>
-        <Link href="/teacher/decks" className="text-sm font-medium">
+        <Link href="/teacher/decks" className="text-sm font-semibold text-text-muted hover:text-accent-2">
           Flash Cards
         </Link>
-        <Link href="/teacher/listening" className="text-sm font-medium">
+        <Link href="/teacher/listening" className="text-sm font-semibold text-text-muted hover:text-accent-2">
           Listening
         </Link>
-        <Link href="/teacher/verbs" className="text-sm font-medium">
+        <Link href="/teacher/verbs" className="text-sm font-semibold text-text-muted hover:text-accent-2">
           Verbs
         </Link>
-        <Link href="/teacher/fill-blanks" className="text-sm font-medium">
+        <Link href="/teacher/fill-blanks" className="text-sm font-semibold text-text-muted hover:text-accent-2">
           Fill in the Blanks
         </Link>
-        <Link href="/teacher/courses" className="text-sm font-medium">
+        <Link href="/teacher/courses" className="text-sm font-semibold text-text-muted hover:text-accent-2">
           Courses
         </Link>
-        <Link href="/" className="ml-auto text-sm text-zinc-500">
+        <Link href="/" className="ml-auto text-sm text-text-faint hover:text-accent-2">
           Back to site
         </Link>
       </nav>

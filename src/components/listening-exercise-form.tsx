@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 
-const inputClass =
-  "rounded border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black";
+const inputClass = "rounded-sm border border-border bg-surface px-3 py-2 text-text";
 
 export function ListeningExerciseForm({
   action,
@@ -17,9 +16,9 @@ export function ListeningExerciseForm({
   return (
     <form
       action={action}
-      className="flex flex-col gap-3 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]"
+      className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4"
     >
-      <h2 className="font-medium">New listening exercise</h2>
+      <h2 className="font-heading font-bold">New listening exercise</h2>
 
       <input
         name="title"
@@ -84,14 +83,14 @@ export function ListeningExerciseForm({
       )}
 
       {audioSourceType === "none" && (
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm text-text-muted">
           No player will be shown — use this when the student will listen on
           a separate device (e.g. you playing it in person, or a recording
           shared another way).
         </p>
       )}
 
-      <label className="text-sm text-zinc-600 dark:text-zinc-400">
+      <label className="text-sm text-text-muted">
         Text with blanks — wrap the missing word(s) in square brackets; use a
         slash for more than one acceptable answer
         <textarea
@@ -106,7 +105,7 @@ export function ListeningExerciseForm({
 
       <button
         type="submit"
-        className="self-start rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+        className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
       >
         Create exercise
       </button>

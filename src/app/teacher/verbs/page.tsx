@@ -13,7 +13,7 @@ export default async function VerbDrillsPage() {
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
-      <h1 className="text-2xl font-semibold">Verb Drills</h1>
+      <h1 className="text-2xl">Verb Drills</h1>
 
       <VerbDrillForm action={createVerbDrill} />
 
@@ -23,19 +23,19 @@ export default async function VerbDrillsPage() {
             <li key={drill.id}>
               <Link
                 href={`/teacher/verbs/${drill.id}`}
-                className="block rounded-lg border border-black/[.08] p-4 hover:bg-black/[.02] dark:border-white/[.145] dark:hover:bg-white/[.03]"
+                className="block rounded-md border border-border bg-surface p-4 hover:bg-bg-alt"
               >
                 <div dir="auto" className="font-medium">
                   {drill.infinitive} — {drill.translation}
                 </div>
-                <div className="text-sm text-zinc-600 dark:text-zinc-400">
+                <div className="text-sm text-text-muted">
                   {TENSE_LABELS[drill.tense]}
                 </div>
               </Link>
             </li>
           ))
         ) : (
-          <p className="text-zinc-600 dark:text-zinc-400">
+          <p className="text-text-muted">
             No verb drills yet — create your first one above.
           </p>
         )}

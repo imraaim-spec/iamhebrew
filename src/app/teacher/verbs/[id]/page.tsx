@@ -49,14 +49,14 @@ export default async function VerbDrillDetailPage({
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 dir="auto" className="text-2xl font-semibold">
+          <h1 dir="auto" className="text-2xl">
             {drill.infinitive} — {drill.translation}
           </h1>
-          <p className="text-zinc-600 dark:text-zinc-400">{TENSE_LABELS[drill.tense]}</p>
+          <p className="text-text-muted">{TENSE_LABELS[drill.tense]}</p>
         </div>
         <Link
           href={`/teacher/verbs/${id}/study`}
-          className="shrink-0 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+          className="shrink-0 rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
         >
           Preview
         </Link>
@@ -64,29 +64,29 @@ export default async function VerbDrillDetailPage({
 
       <ul
         dir="auto"
-        className="grid grid-cols-2 gap-1 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]"
+        className="grid grid-cols-2 gap-1 rounded-md border border-border bg-surface p-4"
       >
         {slots.map((slot) => (
           <li key={slot.key} className="text-sm">
-            <span className="text-zinc-500">{slot.label}: </span>
-            {forms[slot.key] ?? <span className="text-zinc-400">—</span>}
+            <span className="text-text-faint">{slot.label}: </span>
+            {forms[slot.key] ?? <span className="text-text-faint">—</span>}
           </li>
         ))}
       </ul>
 
       <form
         action={setVerbDrillAssignmentsWithId}
-        className="flex flex-col gap-3 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]"
+        className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4"
       >
-        <h2 className="font-medium">Assign this drill</h2>
+        <h2 className="font-heading font-bold">Assign this drill</h2>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="everyone" defaultChecked={assignedToEveryone} />
           Visible to all students
         </label>
 
         {students && students.length > 0 ? (
-          <div className="flex flex-col gap-1 border-t border-black/[.08] pt-3 dark:border-white/[.145]">
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          <div className="flex flex-col gap-1 border-t border-border pt-3">
+            <p className="text-sm text-text-muted">
               Or choose specific students:
             </p>
             {students.map((student) => (
@@ -102,7 +102,7 @@ export default async function VerbDrillDetailPage({
             ))}
           </div>
         ) : (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="text-sm text-text-muted">
             No students have signed in yet. Add them on the Students page,
             then ask them to sign in once.
           </p>
@@ -110,14 +110,14 @@ export default async function VerbDrillDetailPage({
 
         <button
           type="submit"
-          className="self-start rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+          className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
         >
           Save assignment
         </button>
       </form>
 
       <form action={deleteVerbDrillWithId}>
-        <button type="submit" className="text-sm text-red-600 hover:underline dark:text-red-400">
+        <button type="submit" className="text-sm text-red-600 hover:underline">
           Delete this verb drill
         </button>
       </form>

@@ -20,7 +20,7 @@ export function ConfirmDeleteButton({
     >
       <button
         type="submit"
-        className="text-sm text-red-600 hover:underline dark:text-red-400"
+        className="text-sm text-red-600 hover:underline"
       >
         {label}
       </button>

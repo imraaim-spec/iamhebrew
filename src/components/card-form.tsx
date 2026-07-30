@@ -9,8 +9,7 @@ const CARD_TYPES = [
   { value: "audio_fill_blank", label: "Audio + fill in the blank" },
 ] as const;
 
-const inputClass =
-  "rounded border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black";
+const inputClass = "rounded-sm border border-border bg-surface px-3 py-2 text-text";
 
 export function CardForm({
   action,
@@ -22,9 +21,9 @@ export function CardForm({
   return (
     <form
       action={action}
-      className="flex flex-col gap-3 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]"
+      className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4"
     >
-      <h2 className="font-medium">Add card</h2>
+      <h2 className="font-heading font-bold">Add card</h2>
 
       <select
         name="type"
@@ -53,7 +52,7 @@ export function CardForm({
             required
             className={inputClass}
           />
-          <label className="text-sm text-zinc-600 dark:text-zinc-400">
+          <label className="text-sm text-text-muted">
             Pronunciation audio override (optional — auto-generated from the
             front text if left blank)
             <input
@@ -90,7 +89,7 @@ export function CardForm({
           <input name="option1" placeholder="Option 2" required className={inputClass} />
           <input name="option2" placeholder="Option 3 (optional)" className={inputClass} />
           <input name="option3" placeholder="Option 4 (optional)" className={inputClass} />
-          <label className="text-sm text-zinc-600 dark:text-zinc-400">
+          <label className="text-sm text-text-muted">
             Correct option number (1-4)
             <input
               name="correctOption"
@@ -107,7 +106,7 @@ export function CardForm({
 
       {type === "audio_fill_blank" && (
         <>
-          <label className="text-sm text-zinc-600 dark:text-zinc-400">
+          <label className="text-sm text-text-muted">
             Audio (required) — the word or phrase the student will hear
             <input
               name="audio"
@@ -134,7 +133,7 @@ export function CardForm({
 
       <button
         type="submit"
-        className="self-start rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+        className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
       >
         Add card
       </button>

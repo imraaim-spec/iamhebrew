@@ -41,14 +41,14 @@ export default async function CoursesPage() {
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
-      <h1 className="text-2xl font-semibold">Courses</h1>
+      <h1 className="text-2xl">Courses</h1>
 
       <form
         action={createCourse}
-        className="flex flex-col gap-3 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]"
+        className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4"
       >
-        <h2 className="font-medium">New course</h2>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <h2 className="font-heading font-bold">New course</h2>
+        <p className="text-sm text-text-muted">
           Bundle existing content under one name, then assign the whole
           bundle to a student in one click from their page.
         </p>
@@ -56,18 +56,18 @@ export default async function CoursesPage() {
           name="title"
           placeholder="Course name, e.g. Beginner Hebrew"
           required
-          className="rounded border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+          className="rounded-sm border border-border bg-surface px-3 py-2 text-text"
         />
         <textarea
           name="description"
           placeholder="Description (optional)"
           rows={2}
-          className="rounded border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+          className="rounded-sm border border-border bg-surface px-3 py-2 text-text"
         />
 
         {decks && decks.length > 0 && (
           <div>
-            <h3 className="mb-1 text-sm font-medium text-zinc-500">Decks</h3>
+            <h3 className="mb-1 text-sm font-semibold text-text-faint">Decks</h3>
             <div className="flex flex-col gap-1">
               {decks.map((d) => (
                 <label key={d.id} className="flex items-center gap-2 text-sm">
@@ -81,7 +81,7 @@ export default async function CoursesPage() {
 
         {listeningExercises && listeningExercises.length > 0 && (
           <div>
-            <h3 className="mb-1 text-sm font-medium text-zinc-500">
+            <h3 className="mb-1 text-sm font-semibold text-text-faint">
               Listening Exercises
             </h3>
             <div className="flex flex-col gap-1">
@@ -97,7 +97,7 @@ export default async function CoursesPage() {
 
         {verbDrills && verbDrills.length > 0 && (
           <div>
-            <h3 className="mb-1 text-sm font-medium text-zinc-500">Verb Drills</h3>
+            <h3 className="mb-1 text-sm font-semibold text-text-faint">Verb Drills</h3>
             <div className="flex flex-col gap-1">
               {verbDrills.map((v) => (
                 <label key={v.id} className="flex items-center gap-2 text-sm">
@@ -111,7 +111,7 @@ export default async function CoursesPage() {
 
         {fillBlankDrills && fillBlankDrills.length > 0 && (
           <div>
-            <h3 className="mb-1 text-sm font-medium text-zinc-500">
+            <h3 className="mb-1 text-sm font-semibold text-text-faint">
               Fill in the Blanks
             </h3>
             <div className="flex flex-col gap-1">
@@ -127,7 +127,7 @@ export default async function CoursesPage() {
 
         <button
           type="submit"
-          className="self-start rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+          className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
         >
           Create course
         </button>
@@ -139,11 +139,11 @@ export default async function CoursesPage() {
             <li key={course.id}>
               <Link
                 href={`/teacher/courses/${course.id}`}
-                className="block rounded-lg border border-black/[.08] p-4 hover:bg-black/[.02] dark:border-white/[.145] dark:hover:bg-white/[.03]"
+                className="block rounded-md border border-border bg-surface p-4 hover:bg-bg-alt"
               >
                 <div className="font-medium">{course.title}</div>
                 {course.description && (
-                  <div className="text-sm text-zinc-600 dark:text-zinc-400">
+                  <div className="text-sm text-text-muted">
                     {course.description}
                   </div>
                 )}
@@ -151,7 +151,7 @@ export default async function CoursesPage() {
             </li>
           ))
         ) : (
-          <p className="text-zinc-600 dark:text-zinc-400">
+          <p className="text-text-muted">
             No courses yet — create your first one above.
           </p>
         )}

@@ -90,19 +90,19 @@ export function ClozeListeningStudy({ exercise }: { exercise: ListeningExercise 
   let blankIndex = -1;
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-black/[.08] bg-[#fdfaf3] p-6 dark:border-white/[.145] dark:bg-zinc-900">
+    <div className="flex flex-col gap-4 rounded-lg border border-border bg-bg-alt p-6">
       {exercise.audio_url && (
         <audio controls src={exercise.audio_url} className="w-full" />
       )}
 
       {!exercise.audio_url && !embedUrl && (
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-text-faint">
           🎧 Listen on your other device, then fill in what you hear.
         </p>
       )}
 
       {embedUrl && (
-        <div className="aspect-video w-full overflow-hidden rounded-lg">
+        <div className="aspect-video w-full overflow-hidden rounded-md">
           <iframe
             src={embedUrl}
             className="h-full w-full"
@@ -123,11 +123,11 @@ export function ClozeListeningStudy({ exercise }: { exercise: ListeningExercise 
           const isEmpty = value.trim() === "";
           const isCorrect = checked?.[bi];
 
-          let style = "border-black/[.15] dark:border-white/[.2]";
+          let style = "border-border";
           if (checked !== null && !isEmpty) {
             style = isCorrect
-              ? "border-green-500 bg-green-50 dark:bg-green-950"
-              : "border-red-500 bg-red-50 dark:bg-red-950";
+              ? "border-green-500 bg-green-50"
+              : "border-red-500 bg-red-50";
           }
 
           return (
@@ -136,7 +136,7 @@ export function ClozeListeningStudy({ exercise }: { exercise: ListeningExercise 
               value={value}
               onChange={(e) => updateInput(bi, e.target.value)}
               dir="rtl"
-              className={`mx-1 inline-block w-48 rounded border bg-white px-3 py-1 text-center align-baseline text-xl dark:bg-black ${style}`}
+              className={`mx-1 inline-block w-48 rounded-sm border bg-surface px-3 py-1 text-center align-baseline text-xl text-text ${style}`}
             />
           );
         })}
@@ -145,24 +145,24 @@ export function ClozeListeningStudy({ exercise }: { exercise: ListeningExercise 
       <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={check}
-          className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+          className="rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
         >
           בדוק
         </button>
         <button
           onClick={showAnswers}
-          className="rounded-full border border-black/[.08] px-4 py-2 text-sm dark:border-white/[.145]"
+          className="rounded-sm border border-border px-4 py-2 text-sm text-text-muted hover:bg-bg-alt"
         >
           הצג תשובות
         </button>
         <button
           onClick={clear}
-          className="rounded-full border border-black/[.08] px-4 py-2 text-sm dark:border-white/[.145]"
+          className="rounded-sm border border-border px-4 py-2 text-sm text-text-muted hover:bg-bg-alt"
         >
           נקה
         </button>
         {checked && (
-          <span className="text-sm text-zinc-600 dark:text-zinc-400">
+          <span className="text-sm text-text-muted">
             נכון: {checked.filter(Boolean).length} מתוך {blankCount}
           </span>
         )}

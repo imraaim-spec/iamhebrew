@@ -19,7 +19,7 @@ export function FillBlankDrillStudy({
 
   if (segments.length === 0) {
     return (
-      <p className="text-zinc-600 dark:text-zinc-400">
+      <p className="text-text-muted">
         No pieces in this drill yet.
       </p>
     );
@@ -28,8 +28,8 @@ export function FillBlankDrillStudy({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">{title}</h1>
-        <p className="text-sm text-zinc-500">
+        <h1 className="text-2xl">{title}</h1>
+        <p className="text-sm text-text-faint">
           Piece {index + 1} of {segments.length}
         </p>
       </div>
@@ -47,14 +47,14 @@ export function FillBlankDrillStudy({
           <button
             onClick={() => setIndex((i) => Math.max(0, i - 1))}
             disabled={index === 0}
-            className="rounded-full border border-black/[.08] px-4 py-2 text-sm disabled:opacity-40 dark:border-white/[.145]"
+            className="rounded-sm border border-border px-4 py-2 text-sm text-text-muted disabled:opacity-40"
           >
             ‹ Previous
           </button>
           <button
             onClick={() => setIndex((i) => Math.min(segments.length - 1, i + 1))}
             disabled={index === segments.length - 1}
-            className="rounded-full border border-black/[.08] px-4 py-2 text-sm disabled:opacity-40 dark:border-white/[.145]"
+            className="rounded-sm border border-border px-4 py-2 text-sm text-text-muted disabled:opacity-40"
           >
             Next ›
           </button>
@@ -145,7 +145,7 @@ function FillBlankPiece({
   let blankIndex = -1;
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-black/[.08] bg-[#fdfaf3] p-6 dark:border-white/[.145] dark:bg-zinc-900">
+    <div className="flex flex-col gap-4 rounded-lg border border-border bg-bg-alt p-6">
       {audioUrl && <audio controls src={audioUrl} className="w-full" />}
 
       <p dir="rtl" className="whitespace-pre-wrap text-xl leading-loose">
@@ -159,11 +159,11 @@ function FillBlankPiece({
           const isEmpty = value.trim() === "";
           const isCorrect = checked?.[bi];
 
-          let style = "border-black/[.15] dark:border-white/[.2]";
+          let style = "border-border";
           if (checked !== null && !isEmpty) {
             style = isCorrect
-              ? "border-green-500 bg-green-50 dark:bg-green-950"
-              : "border-red-500 bg-red-50 dark:bg-red-950";
+              ? "border-green-500 bg-green-50"
+              : "border-red-500 bg-red-50";
           }
 
           return (
@@ -172,7 +172,7 @@ function FillBlankPiece({
               value={value}
               onChange={(e) => updateInput(bi, e.target.value)}
               dir="rtl"
-              className={`mx-1 inline-block w-48 rounded border bg-white px-3 py-1 text-center align-baseline text-xl dark:bg-black ${style}`}
+              className={`mx-1 inline-block w-48 rounded-sm border bg-surface px-3 py-1 text-center align-baseline text-xl text-text ${style}`}
             />
           );
         })}
@@ -181,24 +181,24 @@ function FillBlankPiece({
       <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={check}
-          className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+          className="rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
         >
           בדוק
         </button>
         <button
           onClick={showAnswers}
-          className="rounded-full border border-black/[.08] px-4 py-2 text-sm dark:border-white/[.145]"
+          className="rounded-sm border border-border px-4 py-2 text-sm text-text-muted hover:bg-bg-alt"
         >
           הצג תשובות
         </button>
         <button
           onClick={clear}
-          className="rounded-full border border-black/[.08] px-4 py-2 text-sm dark:border-white/[.145]"
+          className="rounded-sm border border-border px-4 py-2 text-sm text-text-muted hover:bg-bg-alt"
         >
           נקה
         </button>
         {checked && (
-          <span className="text-sm text-zinc-600 dark:text-zinc-400">
+          <span className="text-sm text-text-muted">
             נכון: {checked.filter(Boolean).length} מתוך {blankCount}
           </span>
         )}

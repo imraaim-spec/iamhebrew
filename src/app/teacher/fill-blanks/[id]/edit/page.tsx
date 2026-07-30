@@ -23,27 +23,27 @@ export default async function EditFillBlankDrillPage({
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
-      <h1 className="text-2xl font-semibold">Edit drill</h1>
+      <h1 className="text-2xl">Edit drill</h1>
 
       <form
         action={updateFillBlankDrillWithId}
-        className="flex flex-col gap-3 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]"
+        className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4"
       >
         <input
           name="name"
           defaultValue={drill.title}
           placeholder="Name"
           required
-          className="rounded border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+          className="rounded-sm border border-border bg-surface px-3 py-2 text-text"
         />
         <textarea
           name="description"
           defaultValue={drill.description ?? ""}
           placeholder="Description (optional)"
           rows={2}
-          className="rounded border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+          className="rounded-sm border border-border bg-surface px-3 py-2 text-text"
         />
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm text-text-muted">
           Two blank lines between pieces, one blank line within a piece,
           blanks marked with square brackets.
         </p>
@@ -53,11 +53,11 @@ export default async function EditFillBlankDrillPage({
           rows={16}
           required
           dir="auto"
-          className="rounded border border-black/[.08] px-3 py-2 font-mono text-sm dark:border-white/[.145] dark:bg-black"
+          className="rounded-sm border border-border bg-surface px-3 py-2 font-mono text-sm text-text"
         />
         <button
           type="submit"
-          className="self-start rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+          className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
         >
           Save changes
         </button>

@@ -90,15 +90,13 @@ export default async function DeckDetailPage({
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">{deck.title}</h1>
-          {deck.description && (
-            <p className="text-zinc-600 dark:text-zinc-400">{deck.description}</p>
-          )}
+          <h1 className="text-2xl">{deck.title}</h1>
+          {deck.description && <p className="text-text-muted">{deck.description}</p>}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
           <Link
             href={`/teacher/decks/${id}/study`}
-            className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+            className="rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
           >
             Study this deck
           </Link>
@@ -106,7 +104,7 @@ export default async function DeckDetailPage({
             <form action={regenerateMissingAudioWithId}>
               <button
                 type="submit"
-                className="rounded-full border border-black/[.08] px-4 py-2 text-sm dark:border-white/[.145]"
+                className="rounded-sm border border-border px-4 py-2 text-sm font-semibold text-text-muted hover:bg-bg-alt"
               >
                 Generate audio for {missingAudioCount} card
                 {missingAudioCount === 1 ? "" : "s"} missing it
@@ -118,9 +116,9 @@ export default async function DeckDetailPage({
 
       <form
         action={setDeckAssignmentsWithDeck}
-        className="flex flex-col gap-3 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]"
+        className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4"
       >
-        <h2 className="font-medium">Assign this deck</h2>
+        <h2 className="font-heading font-bold">Assign this deck</h2>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -131,10 +129,8 @@ export default async function DeckDetailPage({
         </label>
 
         {students && students.length > 0 ? (
-          <div className="flex flex-col gap-1 border-t border-black/[.08] pt-3 dark:border-white/[.145]">
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Or choose specific students:
-            </p>
+          <div className="flex flex-col gap-1 border-t border-border pt-3">
+            <p className="text-sm text-text-muted">Or choose specific students:</p>
             {students.map((student) => (
               <div key={student.id} className="flex items-center gap-2 text-sm">
                 <label className="flex items-center gap-2">
@@ -150,13 +146,13 @@ export default async function DeckDetailPage({
                   name={`custom_name_${student.id}`}
                   placeholder="Custom name for this student (optional)"
                   defaultValue={customNameByStudent.get(student.id) ?? ""}
-                  className="rounded border border-black/[.08] px-2 py-1 text-xs dark:border-white/[.145] dark:bg-black"
+                  className="rounded-sm border border-border bg-surface px-2 py-1 text-xs text-text"
                 />
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="text-sm text-text-muted">
             No students have signed in yet. Add them on the Students page,
             then ask them to sign in once — after that, they&apos;ll appear
             here to assign decks to.
@@ -165,7 +161,7 @@ export default async function DeckDetailPage({
 
         <button
           type="submit"
-          className="self-start rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+          className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
         >
           Save assignment
         </button>
@@ -175,10 +171,10 @@ export default async function DeckDetailPage({
 
       <form
         action={createFlashcardsBulkWithDeck}
-        className="flex flex-col gap-3 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]"
+        className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4"
       >
-        <h2 className="font-medium">Add a list of flashcards</h2>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <h2 className="font-heading font-bold">Add a list of flashcards</h2>
+        <p className="text-sm text-text-muted">
           Paste one word/phrase per line — Hebrew and its translation.
           Pasting two columns straight from a spreadsheet works
           automatically; if typing by hand, separate the two with a pipe
@@ -186,7 +182,7 @@ export default async function DeckDetailPage({
           has commas of its own. Pronunciation audio is generated
           automatically for each one.
         </p>
-        <pre className="rounded bg-black/[.03] p-2 text-xs text-zinc-600 dark:bg-white/[.05] dark:text-zinc-400">
+        <pre className="rounded-sm bg-bg-alt p-2 text-xs text-text-muted">
 {`שלום | Hello
 תודה | Thank you
 בבקשה | Please`}
@@ -197,11 +193,11 @@ export default async function DeckDetailPage({
           placeholder="Paste your list here..."
           required
           dir="auto"
-          className="rounded border border-black/[.08] px-3 py-2 font-mono text-sm dark:border-white/[.145] dark:bg-black"
+          className="rounded-sm border border-border bg-surface px-3 py-2 font-mono text-sm text-text"
         />
         <button
           type="submit"
-          className="self-start rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+          className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
         >
           Add list
         </button>
@@ -214,10 +210,10 @@ export default async function DeckDetailPage({
             return (
               <li
                 key={card.id}
-                className="flex items-start justify-between gap-4 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]"
+                className="flex items-start justify-between gap-4 rounded-md border border-border bg-surface p-4"
               >
                 <div>
-                  <div className="text-xs font-medium uppercase text-zinc-500">
+                  <div className="text-xs font-semibold uppercase text-text-faint">
                     {TYPE_LABELS[card.type] ?? card.type}
                   </div>
                   <div>{summarizeCard(card.type, card.content)}</div>
@@ -230,10 +226,7 @@ export default async function DeckDetailPage({
                   )}
                 </div>
                 <form action={deleteCardWithIds}>
-                  <button
-                    type="submit"
-                    className="text-sm text-red-600 hover:underline dark:text-red-400"
-                  >
+                  <button type="submit" className="text-sm text-red-600 hover:underline">
                     Delete
                   </button>
                 </form>
@@ -241,9 +234,7 @@ export default async function DeckDetailPage({
             );
           })
         ) : (
-          <p className="text-zinc-600 dark:text-zinc-400">
-            No cards yet — add your first one above.
-          </p>
+          <p className="text-text-muted">No cards yet — add your first one above.</p>
         )}
       </ul>
 
