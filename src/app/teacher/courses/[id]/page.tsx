@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { deleteCourse, removeCourseItem, setCourseAssignments } from "../actions";
+import { disambiguateLabels } from "@/lib/disambiguate";
 
 const TYPE_LABELS: Record<string, string> = {
   deck: "Flashcards",
@@ -60,12 +61,13 @@ export default async function CourseDetailPage({
         .data ?? []
     : [];
 
-  const titleByDeckId = new Map(decks.map((d) => [d.id, d.title]));
-  const titleByListeningId = new Map(listeningExercises.map((e) => [e.id, e.title]));
-  const titleByVerbId = new Map(
-    verbDrills.map((v) => [v.id, `${v.infinitive} — ${v.translation}`])
+  const titleByDeckId = disambiguateLabels(decks, (d) => d.title);
+  const titleByListeningId = disambiguateLabels(listeningExercises, (e) => e.title);
+  const titleByVerbId = disambiguateLabels(
+    verbDrills,
+    (v) => `${v.infinitive} — ${v.translation}`
   );
-  const titleByFillBlankId = new Map(fillBlankDrills.map((d) => [d.id, d.title]));
+  const titleByFillBlankId = disambiguateLabels(fillBlankDrills, (d) => d.title);
 
   function itemTitle(itemType: string, itemId: string): string {
     if (itemType === "deck") return titleByDeckId.get(itemId) ?? "(deleted deck)";

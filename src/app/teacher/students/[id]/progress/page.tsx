@@ -6,6 +6,7 @@ import {
   setStudentAssignments,
 } from "../actions";
 import { assignCourseToStudent } from "@/app/teacher/courses/actions";
+import { disambiguateLabels } from "@/lib/disambiguate";
 
 type CardContent = {
   front?: string;
@@ -54,19 +55,31 @@ export default async function StudentProgressPage({
   const { data: decks } = await supabase
     .from("decks")
     .select("id, title")
-    .order("title", { ascending: true });
+    .order("title", { ascending: true })
+    .order("id", { ascending: true });
   const { data: listeningExercises } = await supabase
     .from("listening_exercises")
     .select("id, title")
-    .order("title", { ascending: true });
+    .order("title", { ascending: true })
+    .order("id", { ascending: true });
   const { data: verbDrills } = await supabase
     .from("verb_drills")
     .select("id, infinitive, translation")
-    .order("infinitive", { ascending: true });
+    .order("infinitive", { ascending: true })
+    .order("id", { ascending: true });
   const { data: fillBlankDrills } = await supabase
     .from("fill_blank_drills")
     .select("id, title")
-    .order("title", { ascending: true });
+    .order("title", { ascending: true })
+    .order("id", { ascending: true });
+
+  const deckLabels = disambiguateLabels(decks ?? [], (d) => d.title);
+  const listeningLabels = disambiguateLabels(listeningExercises ?? [], (e) => e.title);
+  const verbLabels = disambiguateLabels(
+    verbDrills ?? [],
+    (v) => `${v.infinitive} — ${v.translation}`
+  );
+  const fillBlankLabels = disambiguateLabels(fillBlankDrills ?? [], (d) => d.title);
 
   const { data: deckAssignments } = await supabase
     .from("assignments")
@@ -196,18 +209,18 @@ export default async function StudentProgressPage({
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-semibold">
+        <h1 className="text-2xl">
           {student.full_name || student.email}
         </h1>
-        <p className="text-zinc-600 dark:text-zinc-400">{student.email}</p>
+        <p className="text-text-muted">{student.email}</p>
       </div>
 
       <form
         action={setStudentAssignmentsWithId}
-        className="flex flex-col gap-4 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]"
+        className="flex flex-col gap-4 rounded-md border border-border bg-surface p-4"
       >
-        <h2 className="font-medium">Assigned content</h2>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <h2 className="font-heading font-bold">Assigned content</h2>
+        <p className="text-sm text-text-muted">
           Check everything this student should have access to, then save.
           Items already shared with everyone are checked and locked — no
           need to assign those individually.
@@ -215,7 +228,7 @@ export default async function StudentProgressPage({
 
         {decks && decks.length > 0 && (
           <div>
-            <h3 className="mb-1 text-sm font-medium text-zinc-500">Decks</h3>
+            <h3 className="mb-1 text-sm font-semibold text-text-faint">Decks</h3>
             <div className="flex flex-col gap-1">
               {decks.map((deck) => {
                 const status = deckStatus.get(deck.id);
@@ -228,9 +241,9 @@ export default async function StudentProgressPage({
                       defaultChecked={status?.assigned || status?.everyone}
                       disabled={status?.everyone}
                     />
-                    {deck.title}
+                    <span dir="auto">{deckLabels.get(deck.id)}</span>
                     {status?.everyone && (
-                      <span className="text-xs text-zinc-400">(everyone)</span>
+                      <span className="text-xs text-text-faint">(everyone)</span>
                     )}
                   </label>
                 );
@@ -241,7 +254,7 @@ export default async function StudentProgressPage({
 
         {listeningExercises && listeningExercises.length > 0 && (
           <div>
-            <h3 className="mb-1 text-sm font-medium text-zinc-500">
+            <h3 className="mb-1 text-sm font-semibold text-text-faint">
               Listening Exercises
             </h3>
             <div className="flex flex-col gap-1">
@@ -256,9 +269,9 @@ export default async function StudentProgressPage({
                       defaultChecked={status?.assigned || status?.everyone}
                       disabled={status?.everyone}
                     />
-                    {exercise.title}
+                    <span dir="auto">{listeningLabels.get(exercise.id)}</span>
                     {status?.everyone && (
-                      <span className="text-xs text-zinc-400">(everyone)</span>
+                      <span className="text-xs text-text-faint">(everyone)</span>
                     )}
                   </label>
                 );
@@ -269,7 +282,7 @@ export default async function StudentProgressPage({
 
         {verbDrills && verbDrills.length > 0 && (
           <div>
-            <h3 className="mb-1 text-sm font-medium text-zinc-500">Verb Drills</h3>
+            <h3 className="mb-1 text-sm font-semibold text-text-faint">Verb Drills</h3>
             <div className="flex flex-col gap-1">
               {verbDrills.map((drill) => {
                 const status = verbStatus.get(drill.id);
@@ -282,11 +295,9 @@ export default async function StudentProgressPage({
                       defaultChecked={status?.assigned || status?.everyone}
                       disabled={status?.everyone}
                     />
-                    <span dir="auto">
-                      {drill.infinitive} — {drill.translation}
-                    </span>
+                    <span dir="auto">{verbLabels.get(drill.id)}</span>
                     {status?.everyone && (
-                      <span className="text-xs text-zinc-400">(everyone)</span>
+                      <span className="text-xs text-text-faint">(everyone)</span>
                     )}
                   </label>
                 );
@@ -297,7 +308,7 @@ export default async function StudentProgressPage({
 
         {fillBlankDrills && fillBlankDrills.length > 0 && (
           <div>
-            <h3 className="mb-1 text-sm font-medium text-zinc-500">
+            <h3 className="mb-1 text-sm font-semibold text-text-faint">
               Fill in the Blanks
             </h3>
             <div className="flex flex-col gap-1">
@@ -312,9 +323,9 @@ export default async function StudentProgressPage({
                       defaultChecked={status?.assigned || status?.everyone}
                       disabled={status?.everyone}
                     />
-                    {drill.title}
+                    <span dir="auto">{fillBlankLabels.get(drill.id)}</span>
                     {status?.everyone && (
-                      <span className="text-xs text-zinc-400">(everyone)</span>
+                      <span className="text-xs text-text-faint">(everyone)</span>
                     )}
                   </label>
                 );
@@ -327,7 +338,7 @@ export default async function StudentProgressPage({
           !listeningExercises?.length &&
           !verbDrills?.length &&
           !fillBlankDrills?.length && (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-text-muted">
               Nothing created yet — build a deck, listening exercise, verb
               drill, or fill-in-the-blank drill first.
             </p>
@@ -335,16 +346,16 @@ export default async function StudentProgressPage({
 
         <button
           type="submit"
-          className="self-start rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+          className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
         >
           Save assignments
         </button>
       </form>
 
       {courses && courses.length > 0 && (
-        <div className="flex flex-col gap-2 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]">
-          <h2 className="font-medium">Assign a course</h2>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <div className="flex flex-col gap-2 rounded-md border border-border bg-surface p-4">
+          <h2 className="font-heading font-bold">Assign a course</h2>
+          <p className="text-sm text-text-muted">
             Instantly assigns everything bundled in that course to this
             student.
           </p>
@@ -354,19 +365,19 @@ export default async function StudentProgressPage({
               <form
                 key={course.id}
                 action={assignCourseWithIds}
-                className="flex items-center justify-between gap-4 border-t border-black/[.08] pt-2 dark:border-white/[.145]"
+                className="flex items-center justify-between gap-4 border-t border-border pt-2"
               >
                 <div>
                   <div className="font-medium">{course.title}</div>
                   {course.description && (
-                    <div className="text-sm text-zinc-600 dark:text-zinc-400">
+                    <div className="text-sm text-text-muted">
                       {course.description}
                     </div>
                   )}
                 </div>
                 <button
                   type="submit"
-                  className="shrink-0 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+                  className="shrink-0 rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
                 >
                   Assign
                 </button>
@@ -378,25 +389,25 @@ export default async function StudentProgressPage({
 
       <form
         action={saveLessonNoteWithId}
-        className="flex flex-col gap-3 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]"
+        className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4"
       >
-        <h2 className="font-medium">
+        <h2 className="font-heading font-bold">
           {noteBeingEdited ? "Edit lesson note" : "Add a lesson note"}
         </h2>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm text-text-muted">
           One note per day — the student&apos;s wall groups everything
           assigned that day under this note. Paste a Notion link only if
           that page is shared publicly (&quot;Share to web&quot;), otherwise
           the student won&apos;t be able to open it.
         </p>
-        <label className="text-sm text-zinc-600 dark:text-zinc-400">
+        <label className="text-sm text-text-muted">
           Date
           <input
             type="date"
             name="lesson_date"
             defaultValue={noteBeingEdited?.lesson_date ?? todayIso}
             required
-            className="mt-1 block rounded border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+            className="mt-1 block rounded-sm border border-border bg-surface px-3 py-2 text-text"
           />
         </label>
         <textarea
@@ -405,17 +416,17 @@ export default async function StudentProgressPage({
           placeholder="Notes for this lesson (optional)"
           rows={4}
           dir="auto"
-          className="rounded border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+          className="rounded-sm border border-border bg-surface px-3 py-2 text-text"
         />
         <input
           name="notion_url"
           defaultValue={noteBeingEdited?.notion_url ?? ""}
           placeholder="Notion page link (optional)"
-          className="rounded border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+          className="rounded-sm border border-border bg-surface px-3 py-2 text-text"
         />
         <button
           type="submit"
-          className="self-start rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+          className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
         >
           {noteBeingEdited ? "Save changes" : "Add note"}
         </button>
@@ -428,10 +439,10 @@ export default async function StudentProgressPage({
             return (
               <div
                 key={note.id}
-                className="flex items-start justify-between gap-4 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]"
+                className="flex items-start justify-between gap-4 rounded-md border border-border bg-surface p-4"
               >
                 <div>
-                  <div className="text-xs font-medium uppercase text-zinc-500">
+                  <div className="text-xs font-semibold uppercase text-text-faint">
                     {new Date(note.lesson_date).toLocaleDateString()}
                   </div>
                   {note.notes_text && (
@@ -444,7 +455,7 @@ export default async function StudentProgressPage({
                       href={note.notion_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+                      className="text-sm text-accent-2 hover:underline"
                     >
                       Notion link
                     </a>
@@ -453,14 +464,14 @@ export default async function StudentProgressPage({
                 <div className="flex shrink-0 gap-3">
                   <a
                     href={`?edit_date=${note.lesson_date}`}
-                    className="text-sm text-zinc-500 hover:underline"
+                    className="text-sm text-text-faint hover:underline"
                   >
                     Edit
                   </a>
                   <form action={deleteLessonNoteWithIds}>
                     <button
                       type="submit"
-                      className="text-sm text-red-600 hover:underline dark:text-red-400"
+                      className="text-sm text-red-600 hover:underline"
                     >
                       Delete
                     </button>
@@ -472,25 +483,25 @@ export default async function StudentProgressPage({
         </div>
       )}
 
-      <div className="rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]">
-        <h2 className="mb-2 font-medium">Overall</h2>
+      <div className="rounded-md border border-border bg-surface p-4">
+        <h2 className="mb-2 font-heading font-bold">Overall</h2>
         {totalCount > 0 ? (
-          <p className="text-zinc-600 dark:text-zinc-400">
+          <p className="text-text-muted">
             {correctCount} / {totalCount} correct ({overallPct}%)
           </p>
         ) : (
-          <p className="text-zinc-600 dark:text-zinc-400">
+          <p className="text-text-muted">
             No activity yet — nothing practiced.
           </p>
         )}
       </div>
 
       {deckStats.size > 0 && (
-        <div className="rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]">
-          <h2 className="mb-2 font-medium">By deck</h2>
+        <div className="rounded-md border border-border bg-surface p-4">
+          <h2 className="mb-2 font-heading font-bold">By deck</h2>
           <ul className="flex flex-col gap-1">
             {Array.from(deckStats.values()).map((d) => (
-              <li key={d.title} className="text-sm text-zinc-600 dark:text-zinc-400">
+              <li key={d.title} className="text-sm text-text-muted">
                 {d.title}: {d.correct} / {d.total} correct (
                 {Math.round((d.correct / d.total) * 100)}%)
               </li>
@@ -500,11 +511,11 @@ export default async function StudentProgressPage({
       )}
 
       {weakSpots.length > 0 && (
-        <div className="rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]">
-          <h2 className="mb-2 font-medium">Weak spots</h2>
+        <div className="rounded-md border border-border bg-surface p-4">
+          <h2 className="mb-2 font-heading font-bold">Weak spots</h2>
           <ul className="flex flex-col gap-1">
             {weakSpots.map((w, i) => (
-              <li key={i} dir="auto" className="text-sm text-zinc-600 dark:text-zinc-400">
+              <li key={i} dir="auto" className="text-sm text-text-muted">
                 {w.label} — {w.correct} / {w.total} correct
               </li>
             ))}
@@ -513,14 +524,14 @@ export default async function StudentProgressPage({
       )}
 
       {all.length > 0 && (
-        <div className="rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]">
-          <h2 className="mb-2 font-medium">Recent activity</h2>
+        <div className="rounded-md border border-border bg-surface p-4">
+          <h2 className="mb-2 font-heading font-bold">Recent activity</h2>
           <ul className="flex flex-col gap-1">
             {all.slice(0, 20).map((a) => (
               <li
                 key={a.id}
                 dir="auto"
-                className="flex items-center justify-between gap-4 text-sm text-zinc-600 dark:text-zinc-400"
+                className="flex items-center justify-between gap-4 text-sm text-text-muted"
               >
                 <span>
                   {cardLabel(a.card?.content)}

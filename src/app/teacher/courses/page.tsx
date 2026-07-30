@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createCourse } from "./actions";
+import { disambiguateLabels } from "@/lib/disambiguate";
 
 export default async function CoursesPage() {
   const supabase = await createClient();
@@ -9,19 +10,34 @@ export default async function CoursesPage() {
     .select("id, title, description")
     .order("created_at", { ascending: false });
 
-  const { data: decks } = await supabase.from("decks").select("id, title").order("title");
+  const { data: decks } = await supabase
+    .from("decks")
+    .select("id, title")
+    .order("title")
+    .order("id");
   const { data: listeningExercises } = await supabase
     .from("listening_exercises")
     .select("id, title")
-    .order("title");
+    .order("title")
+    .order("id");
   const { data: verbDrills } = await supabase
     .from("verb_drills")
     .select("id, infinitive, translation")
-    .order("infinitive");
+    .order("infinitive")
+    .order("id");
   const { data: fillBlankDrills } = await supabase
     .from("fill_blank_drills")
     .select("id, title")
-    .order("title");
+    .order("title")
+    .order("id");
+
+  const deckLabels = disambiguateLabels(decks ?? [], (d) => d.title);
+  const listeningLabels = disambiguateLabels(listeningExercises ?? [], (e) => e.title);
+  const verbLabels = disambiguateLabels(
+    verbDrills ?? [],
+    (v) => `${v.infinitive} — ${v.translation}`
+  );
+  const fillBlankLabels = disambiguateLabels(fillBlankDrills ?? [], (d) => d.title);
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
@@ -56,7 +72,7 @@ export default async function CoursesPage() {
               {decks.map((d) => (
                 <label key={d.id} className="flex items-center gap-2 text-sm">
                   <input type="checkbox" name="decks" value={d.id} />
-                  {d.title}
+                  <span dir="auto">{deckLabels.get(d.id)}</span>
                 </label>
               ))}
             </div>
@@ -72,7 +88,7 @@ export default async function CoursesPage() {
               {listeningExercises.map((e) => (
                 <label key={e.id} className="flex items-center gap-2 text-sm">
                   <input type="checkbox" name="listening" value={e.id} />
-                  {e.title}
+                  <span dir="auto">{listeningLabels.get(e.id)}</span>
                 </label>
               ))}
             </div>
@@ -86,9 +102,7 @@ export default async function CoursesPage() {
               {verbDrills.map((v) => (
                 <label key={v.id} className="flex items-center gap-2 text-sm">
                   <input type="checkbox" name="verbs" value={v.id} />
-                  <span dir="auto">
-                    {v.infinitive} — {v.translation}
-                  </span>
+                  <span dir="auto">{verbLabels.get(v.id)}</span>
                 </label>
               ))}
             </div>
@@ -104,7 +118,7 @@ export default async function CoursesPage() {
               {fillBlankDrills.map((d) => (
                 <label key={d.id} className="flex items-center gap-2 text-sm">
                   <input type="checkbox" name="fillblanks" value={d.id} />
-                  {d.title}
+                  <span dir="auto">{fillBlankLabels.get(d.id)}</span>
                 </label>
               ))}
             </div>
