@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { generateHebrewAudioUrl } from "@/lib/tts";
 import { extractSpeakableText } from "@/lib/cloze";
+import { syncItemAssignments } from "@/lib/assignment-sync";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -35,19 +36,16 @@ async function saveAssignments(
   formData: FormData
 ) {
   const everyone = formData.get("everyone") === "on";
-  const studentIds = formData.getAll("students").map((v) => String(v));
+  const checkedStudentIds = new Set(formData.getAll("students").map((v) => String(v)));
 
-  if (everyone) {
-    const { error } = await supabase
-      .from("fill_blank_assignments")
-      .insert({ drill_id: drillId, student_id: null });
-    if (error) throw new Error(`Failed to save assignment: ${error.message}`);
-  } else if (studentIds.length > 0) {
-    const { error } = await supabase.from("fill_blank_assignments").insert(
-      studentIds.map((studentId) => ({ drill_id: drillId, student_id: studentId }))
-    );
-    if (error) throw new Error(`Failed to save assignment: ${error.message}`);
-  }
+  await syncItemAssignments(supabase, {
+    assignmentTable: "fill_blank_assignments",
+    idColumn: "drill_id",
+    itemType: "fillblank",
+    itemId: drillId,
+    everyone,
+    checkedStudentIds,
+  });
 }
 
 export async function createFillBlankDrill(formData: FormData) {
@@ -136,16 +134,7 @@ export async function deleteFillBlankDrill(drillId: string) {
 
 export async function setFillBlankAssignments(drillId: string, formData: FormData) {
   const supabase = await createClient();
-
-  const { error: deleteError } = await supabase
-    .from("fill_blank_assignments")
-    .delete()
-    .eq("drill_id", drillId);
-  if (deleteError) {
-    throw new Error(`Failed to clear previous assignment: ${deleteError.message}`);
-  }
-
   await saveAssignments(supabase, drillId, formData);
-
   revalidatePath(`/teacher/fill-blanks/${drillId}`);
+  revalidatePath("/student");
 }

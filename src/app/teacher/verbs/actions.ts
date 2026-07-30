@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { generateHebrewAudioUrl } from "@/lib/tts";
 import { TENSE_SLOTS } from "@/lib/hebrew-verbs";
+import { syncItemAssignments } from "@/lib/assignment-sync";
 
 export async function createVerbDrill(formData: FormData) {
   const infinitive = formData.get("infinitive") as string;
@@ -55,27 +56,17 @@ export async function deleteVerbDrill(id: string) {
 export async function setVerbDrillAssignments(drillId: string, formData: FormData) {
   const supabase = await createClient();
   const everyone = formData.get("everyone") === "on";
-  const studentIds = formData.getAll("students").map((v) => String(v));
+  const checkedStudentIds = new Set(formData.getAll("students").map((v) => String(v)));
 
-  const { error: deleteError } = await supabase
-    .from("verb_drill_assignments")
-    .delete()
-    .eq("drill_id", drillId);
-  if (deleteError) {
-    throw new Error(`Failed to clear previous assignment: ${deleteError.message}`);
-  }
-
-  if (everyone) {
-    const { error } = await supabase
-      .from("verb_drill_assignments")
-      .insert({ drill_id: drillId, student_id: null });
-    if (error) throw new Error(`Failed to save assignment: ${error.message}`);
-  } else if (studentIds.length > 0) {
-    const { error } = await supabase.from("verb_drill_assignments").insert(
-      studentIds.map((studentId) => ({ drill_id: drillId, student_id: studentId }))
-    );
-    if (error) throw new Error(`Failed to save assignment: ${error.message}`);
-  }
+  await syncItemAssignments(supabase, {
+    assignmentTable: "verb_drill_assignments",
+    idColumn: "drill_id",
+    itemType: "verb",
+    itemId: drillId,
+    everyone,
+    checkedStudentIds,
+  });
 
   revalidatePath(`/teacher/verbs/${drillId}`);
+  revalidatePath("/student");
 }

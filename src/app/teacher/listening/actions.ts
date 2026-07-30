@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { syncItemAssignments } from "@/lib/assignment-sync";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -76,27 +77,17 @@ export async function deleteListeningExercise(id: string) {
 export async function setListeningAssignments(exerciseId: string, formData: FormData) {
   const supabase = await createClient();
   const everyone = formData.get("everyone") === "on";
-  const studentIds = formData.getAll("students").map((v) => String(v));
+  const checkedStudentIds = new Set(formData.getAll("students").map((v) => String(v)));
 
-  const { error: deleteError } = await supabase
-    .from("listening_assignments")
-    .delete()
-    .eq("exercise_id", exerciseId);
-  if (deleteError) {
-    throw new Error(`Failed to clear previous assignment: ${deleteError.message}`);
-  }
-
-  if (everyone) {
-    const { error } = await supabase
-      .from("listening_assignments")
-      .insert({ exercise_id: exerciseId, student_id: null });
-    if (error) throw new Error(`Failed to save assignment: ${error.message}`);
-  } else if (studentIds.length > 0) {
-    const { error } = await supabase.from("listening_assignments").insert(
-      studentIds.map((studentId) => ({ exercise_id: exerciseId, student_id: studentId }))
-    );
-    if (error) throw new Error(`Failed to save assignment: ${error.message}`);
-  }
+  await syncItemAssignments(supabase, {
+    assignmentTable: "listening_assignments",
+    idColumn: "exercise_id",
+    itemType: "listening",
+    itemId: exerciseId,
+    everyone,
+    checkedStudentIds,
+  });
 
   revalidatePath(`/teacher/listening/${exerciseId}`);
+  revalidatePath("/student");
 }

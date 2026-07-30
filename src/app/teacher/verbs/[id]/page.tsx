@@ -33,13 +33,28 @@ export default async function VerbDrillDetailPage({
     .from("verb_drill_assignments")
     .select("student_id")
     .eq("drill_id", id);
+  const { data: exclusions } = await supabase
+    .from("assignment_exclusions")
+    .select("student_id")
+    .eq("item_type", "verb")
+    .eq("item_id", id);
 
   const assignedToEveryone =
     currentAssignments?.some((a) => a.student_id === null) ?? false;
-  const assignedStudentIds = new Set(
+  const excludedStudentIds = new Set((exclusions ?? []).map((e) => e.student_id));
+  const individuallyAssignedIds = new Set(
     (currentAssignments ?? [])
       .filter((a) => a.student_id !== null)
       .map((a) => a.student_id)
+  );
+  const assignedStudentIds = new Set(
+    (students ?? [])
+      .map((s) => s.id)
+      .filter(
+        (sid) =>
+          individuallyAssignedIds.has(sid) ||
+          (assignedToEveryone && !excludedStudentIds.has(sid))
+      )
   );
 
   const setVerbDrillAssignmentsWithId = setVerbDrillAssignments.bind(null, id);
@@ -87,7 +102,9 @@ export default async function VerbDrillDetailPage({
         {students && students.length > 0 ? (
           <div className="flex flex-col gap-1 border-t border-border pt-3">
             <p className="text-sm text-text-muted">
-              Or choose specific students:
+              {assignedToEveryone
+                ? "Everyone has this drill by default — uncheck a student to remove it for just them:"
+                : "Or choose specific students:"}
             </p>
             {students.map((student) => (
               <label key={student.id} className="flex items-center gap-2 text-sm">

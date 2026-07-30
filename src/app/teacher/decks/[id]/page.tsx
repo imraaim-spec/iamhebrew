@@ -62,13 +62,28 @@ export default async function DeckDetailPage({
     .from("assignments")
     .select("student_id, custom_name")
     .eq("deck_id", id);
+  const { data: exclusions } = await supabase
+    .from("assignment_exclusions")
+    .select("student_id")
+    .eq("item_type", "deck")
+    .eq("item_id", id);
 
   const assignedToEveryone =
     currentAssignments?.some((a) => a.student_id === null) ?? false;
-  const assignedStudentIds = new Set(
+  const excludedStudentIds = new Set((exclusions ?? []).map((e) => e.student_id));
+  const individuallyAssignedIds = new Set(
     (currentAssignments ?? [])
       .filter((a) => a.student_id !== null)
       .map((a) => a.student_id)
+  );
+  const assignedStudentIds = new Set(
+    (students ?? [])
+      .map((s) => s.id)
+      .filter(
+        (sid) =>
+          individuallyAssignedIds.has(sid) ||
+          (assignedToEveryone && !excludedStudentIds.has(sid))
+      )
   );
   const customNameByStudent = new Map(
     (currentAssignments ?? [])
@@ -130,7 +145,11 @@ export default async function DeckDetailPage({
 
         {students && students.length > 0 ? (
           <div className="flex flex-col gap-1 border-t border-border pt-3">
-            <p className="text-sm text-text-muted">Or choose specific students:</p>
+            <p className="text-sm text-text-muted">
+              {assignedToEveryone
+                ? "Everyone has this deck by default — uncheck a student to remove it for just them:"
+                : "Or choose specific students:"}
+            </p>
             {students.map((student) => (
               <div key={student.id} className="flex items-center gap-2 text-sm">
                 <label className="flex items-center gap-2">

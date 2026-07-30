@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { syncItemAssignments } from "@/lib/assignment-sync";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -169,35 +170,21 @@ export async function createFlashcardsBulk(deckId: string, formData: FormData) {
 export async function setDeckAssignments(deckId: string, formData: FormData) {
   const supabase = await createClient();
   const everyone = formData.get("everyone") === "on";
-  const studentIds = formData.getAll("students").map((v) => String(v));
+  const checkedStudentIds = new Set(formData.getAll("students").map((v) => String(v)));
 
-  // Replace the whole assignment set for this deck each time — simplest
-  // way to keep it consistent with whatever's checked in the form.
-  const { error: deleteError } = await supabase
-    .from("assignments")
-    .delete()
-    .eq("deck_id", deckId);
-  if (deleteError) {
-    throw new Error(`Failed to clear previous assignment: ${deleteError.message}`);
-  }
-
-  if (everyone) {
-    const { error } = await supabase
-      .from("assignments")
-      .insert({ deck_id: deckId, student_id: null });
-    if (error) throw new Error(`Failed to save assignment: ${error.message}`);
-  } else if (studentIds.length > 0) {
-    const { error } = await supabase.from("assignments").insert(
-      studentIds.map((studentId) => ({
-        deck_id: deckId,
-        student_id: studentId,
-        custom_name: (formData.get(`custom_name_${studentId}`) as string)?.trim() || null,
-      }))
-    );
-    if (error) throw new Error(`Failed to save assignment: ${error.message}`);
-  }
+  await syncItemAssignments(supabase, {
+    assignmentTable: "assignments",
+    idColumn: "deck_id",
+    itemType: "deck",
+    itemId: deckId,
+    everyone,
+    checkedStudentIds,
+    customNameFor: (studentId) =>
+      (formData.get(`custom_name_${studentId}`) as string)?.trim() || null,
+  });
 
   revalidatePath(`/teacher/decks/${deckId}`);
+  revalidatePath("/student");
 }
 
 export async function deleteCard(cardId: string, deckId: string) {
