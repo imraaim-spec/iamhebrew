@@ -7,6 +7,7 @@ import {
 } from "../actions";
 import { assignCourseToStudent } from "@/app/teacher/courses/actions";
 import { disambiguateLabels } from "@/lib/disambiguate";
+import { groupByLanguage } from "@/lib/language";
 
 type CardContent = {
   front?: string;
@@ -54,7 +55,7 @@ export default async function StudentProgressPage({
 
   const { data: decks } = await supabase
     .from("decks")
-    .select("id, title")
+    .select("id, title, language")
     .order("title", { ascending: true })
     .order("id", { ascending: true });
   const { data: listeningExercises } = await supabase
@@ -64,14 +65,18 @@ export default async function StudentProgressPage({
     .order("id", { ascending: true });
   const { data: verbDrills } = await supabase
     .from("verb_drills")
-    .select("id, infinitive, translation")
+    .select("id, infinitive, translation, language")
     .order("infinitive", { ascending: true })
     .order("id", { ascending: true });
   const { data: fillBlankDrills } = await supabase
     .from("fill_blank_drills")
-    .select("id, title")
+    .select("id, title, language")
     .order("title", { ascending: true })
     .order("id", { ascending: true });
+
+  const deckGroups = groupByLanguage(decks ?? []);
+  const verbGroups = groupByLanguage(verbDrills ?? []);
+  const fillBlankGroups = groupByLanguage(fillBlankDrills ?? []);
 
   const deckLabels = disambiguateLabels(decks ?? [], (d) => d.title);
   const listeningLabels = disambiguateLabels(listeningExercises ?? [], (e) => e.title);
@@ -242,24 +247,33 @@ export default async function StudentProgressPage({
         {decks && decks.length > 0 && (
           <div>
             <h3 className="mb-1 text-sm font-semibold text-text-faint">Decks</h3>
-            <div className="flex flex-col gap-1">
-              {decks.map((deck) => {
-                const status = deckStatus.get(deck.id);
-                return (
-                  <label key={deck.id} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      name="decks"
-                      value={deck.id}
-                      defaultChecked={status?.assigned}
-                    />
-                    <span dir="auto">{deckLabels.get(deck.id)}</span>
-                    {status?.everyone && (
-                      <span className="text-xs text-text-faint">(everyone)</span>
-                    )}
-                  </label>
-                );
-              })}
+            <div className="flex flex-col gap-3">
+              {deckGroups.map((group) => (
+                <div key={group.key}>
+                  <h4 className="mb-1 text-xs font-semibold text-text-faint">
+                    {group.label}
+                  </h4>
+                  <div className="flex flex-col gap-1">
+                    {group.items.map((deck) => {
+                      const status = deckStatus.get(deck.id);
+                      return (
+                        <label key={deck.id} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            name="decks"
+                            value={deck.id}
+                            defaultChecked={status?.assigned}
+                          />
+                          <span dir="auto">{deckLabels.get(deck.id)}</span>
+                          {status?.everyone && (
+                            <span className="text-xs text-text-faint">(everyone)</span>
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -294,24 +308,33 @@ export default async function StudentProgressPage({
         {verbDrills && verbDrills.length > 0 && (
           <div>
             <h3 className="mb-1 text-sm font-semibold text-text-faint">Verb Drills</h3>
-            <div className="flex flex-col gap-1">
-              {verbDrills.map((drill) => {
-                const status = verbStatus.get(drill.id);
-                return (
-                  <label key={drill.id} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      name="verbs"
-                      value={drill.id}
-                      defaultChecked={status?.assigned}
-                    />
-                    <span dir="auto">{verbLabels.get(drill.id)}</span>
-                    {status?.everyone && (
-                      <span className="text-xs text-text-faint">(everyone)</span>
-                    )}
-                  </label>
-                );
-              })}
+            <div className="flex flex-col gap-3">
+              {verbGroups.map((group) => (
+                <div key={group.key}>
+                  <h4 className="mb-1 text-xs font-semibold text-text-faint">
+                    {group.label}
+                  </h4>
+                  <div className="flex flex-col gap-1">
+                    {group.items.map((drill) => {
+                      const status = verbStatus.get(drill.id);
+                      return (
+                        <label key={drill.id} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            name="verbs"
+                            value={drill.id}
+                            defaultChecked={status?.assigned}
+                          />
+                          <span dir="auto">{verbLabels.get(drill.id)}</span>
+                          {status?.everyone && (
+                            <span className="text-xs text-text-faint">(everyone)</span>
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -321,24 +344,33 @@ export default async function StudentProgressPage({
             <h3 className="mb-1 text-sm font-semibold text-text-faint">
               Fill in the Blanks
             </h3>
-            <div className="flex flex-col gap-1">
-              {fillBlankDrills.map((drill) => {
-                const status = fillBlankStatus.get(drill.id);
-                return (
-                  <label key={drill.id} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      name="fillblanks"
-                      value={drill.id}
-                      defaultChecked={status?.assigned}
-                    />
-                    <span dir="auto">{fillBlankLabels.get(drill.id)}</span>
-                    {status?.everyone && (
-                      <span className="text-xs text-text-faint">(everyone)</span>
-                    )}
-                  </label>
-                );
-              })}
+            <div className="flex flex-col gap-3">
+              {fillBlankGroups.map((group) => (
+                <div key={group.key}>
+                  <h4 className="mb-1 text-xs font-semibold text-text-faint">
+                    {group.label}
+                  </h4>
+                  <div className="flex flex-col gap-1">
+                    {group.items.map((drill) => {
+                      const status = fillBlankStatus.get(drill.id);
+                      return (
+                        <label key={drill.id} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            name="fillblanks"
+                            value={drill.id}
+                            defaultChecked={status?.assigned}
+                          />
+                          <span dir="auto">{fillBlankLabels.get(drill.id)}</span>
+                          {status?.everyone && (
+                            <span className="text-xs text-text-faint">(everyone)</span>
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

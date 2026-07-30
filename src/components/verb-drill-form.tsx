@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { TENSE_SLOTS, TENSE_LABELS, type Tense } from "@/lib/hebrew-verbs";
+import { LANGUAGE_LABELS } from "@/lib/language";
 
 const inputClass = "rounded-sm border border-border bg-surface px-3 py-2 text-text";
 
@@ -32,6 +33,15 @@ export function VerbDrillForm({
         required
         className={inputClass}
       />
+
+      <select name="language" defaultValue="" className={inputClass}>
+        <option value="">Language (not set)</option>
+        {Object.entries(LANGUAGE_LABELS).map(([value, label]) => (
+          <option key={value} value={value}>
+            {label}
+          </option>
+        ))}
+      </select>
 
       <select
         name="tense"

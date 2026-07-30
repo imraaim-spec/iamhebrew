@@ -11,6 +11,8 @@ import {
   regenerateMissingAudio,
   setDeckAssignments,
 } from "./actions";
+import { updateDeck } from "../actions";
+import { LANGUAGE_LABELS } from "@/lib/language";
 
 function summarizeCard(type: string, content: Record<string, unknown>) {
   if (type === "flashcard") return `${content.front} → ${content.back}`;
@@ -40,7 +42,7 @@ export default async function DeckDetailPage({
 
   const { data: deck } = await supabase
     .from("decks")
-    .select("id, title, description")
+    .select("id, title, description, language")
     .eq("id", id)
     .single();
 
@@ -96,6 +98,7 @@ export default async function DeckDetailPage({
   const setDeckAssignmentsWithDeck = setDeckAssignments.bind(null, id);
   const deleteDeckWithId = deleteDeck.bind(null, id);
   const regenerateMissingAudioWithId = regenerateMissingAudio.bind(null, id);
+  const updateDeckWithId = updateDeck.bind(null, id);
 
   const missingAudioCount = (cards ?? []).filter(
     (c) => c.type === "flashcard" && !c.content.audio_url
@@ -128,6 +131,44 @@ export default async function DeckDetailPage({
           )}
         </div>
       </div>
+
+      <form
+        action={updateDeckWithId}
+        className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4"
+      >
+        <h2 className="font-heading font-bold">Edit deck</h2>
+        <input
+          name="title"
+          defaultValue={deck.title}
+          placeholder="Title"
+          required
+          className="rounded-sm border border-border bg-surface px-3 py-2 text-text"
+        />
+        <textarea
+          name="description"
+          defaultValue={deck.description ?? ""}
+          placeholder="Description (optional)"
+          className="rounded-sm border border-border bg-surface px-3 py-2 text-text"
+        />
+        <select
+          name="language"
+          defaultValue={deck.language ?? ""}
+          className="rounded-sm border border-border bg-surface px-3 py-2 text-text"
+        >
+          <option value="">Language (not set)</option>
+          {Object.entries(LANGUAGE_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <button
+          type="submit"
+          className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
+        >
+          Save changes
+        </button>
+      </form>
 
       <form
         action={setDeckAssignmentsWithDeck}

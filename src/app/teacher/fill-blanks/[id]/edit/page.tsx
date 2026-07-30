@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { updateFillBlankDrill } from "../../actions";
+import { LANGUAGE_LABELS } from "@/lib/language";
 
 export default async function EditFillBlankDrillPage({
   params,
@@ -12,7 +13,7 @@ export default async function EditFillBlankDrillPage({
 
   const { data: drill } = await supabase
     .from("fill_blank_drills")
-    .select("id, title, description, segments")
+    .select("id, title, description, segments, language")
     .eq("id", id)
     .single();
 
@@ -43,6 +44,18 @@ export default async function EditFillBlankDrillPage({
           rows={2}
           className="rounded-sm border border-border bg-surface px-3 py-2 text-text"
         />
+        <select
+          name="language"
+          defaultValue={drill.language ?? ""}
+          className="rounded-sm border border-border bg-surface px-3 py-2 text-text"
+        >
+          <option value="">Language (not set)</option>
+          {Object.entries(LANGUAGE_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
         <p className="text-sm text-text-muted">
           Two blank lines between pieces, one blank line within a piece,
           blanks marked with square brackets.

@@ -51,6 +51,7 @@ async function saveAssignments(
 export async function createFillBlankDrill(formData: FormData) {
   const name = (formData.get("name") as string)?.trim();
   const description = (formData.get("description") as string)?.trim() || null;
+  const language = (formData.get("language") as string) || null;
   const raw = (formData.get("batch") as string) || "";
   if (!name) return;
 
@@ -67,7 +68,14 @@ export async function createFillBlankDrill(formData: FormData) {
 
   const { data: drill, error } = await supabase
     .from("fill_blank_drills")
-    .insert({ title: name, description, segments, audio_urls: audioUrls, created_by: user.id })
+    .insert({
+      title: name,
+      description,
+      segments,
+      audio_urls: audioUrls,
+      language,
+      created_by: user.id,
+    })
     .select("id")
     .single();
   if (error) throw new Error(`Failed to save drill: ${error.message}`);
@@ -81,6 +89,7 @@ export async function createFillBlankDrill(formData: FormData) {
 export async function updateFillBlankDrill(drillId: string, formData: FormData) {
   const name = (formData.get("name") as string)?.trim();
   const description = (formData.get("description") as string)?.trim() || null;
+  const language = (formData.get("language") as string) || null;
   const raw = (formData.get("batch") as string) || "";
   if (!name) return;
 
@@ -92,7 +101,7 @@ export async function updateFillBlankDrill(drillId: string, formData: FormData) 
 
   const { error } = await supabase
     .from("fill_blank_drills")
-    .update({ title: name, description, segments, audio_urls: audioUrls })
+    .update({ title: name, description, segments, audio_urls: audioUrls, language })
     .eq("id", drillId);
   if (error) throw new Error(`Failed to update drill: ${error.message}`);
 

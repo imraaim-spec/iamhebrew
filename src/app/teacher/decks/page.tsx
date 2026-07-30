@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createDeck } from "./actions";
+import { LANGUAGE_LABELS } from "@/lib/language";
 
 export default async function DecksPage() {
   const supabase = await createClient();
@@ -29,6 +30,18 @@ export default async function DecksPage() {
           placeholder="Description (optional)"
           className="rounded-sm border border-border bg-surface px-3 py-2 text-text"
         />
+        <select
+          name="language"
+          defaultValue=""
+          className="rounded-sm border border-border bg-surface px-3 py-2 text-text"
+        >
+          <option value="">Language (not set)</option>
+          {Object.entries(LANGUAGE_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
         <button
           type="submit"
           className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"

@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { deleteVerbDrill, setVerbDrillAssignments } from "../actions";
+import { deleteVerbDrill, setVerbDrillAssignments, updateVerbDrill } from "../actions";
 import { TENSE_SLOTS, TENSE_LABELS } from "@/lib/hebrew-verbs";
+import { LANGUAGE_LABELS } from "@/lib/language";
 
 export default async function VerbDrillDetailPage({
   params,
@@ -14,7 +15,7 @@ export default async function VerbDrillDetailPage({
 
   const { data: drill } = await supabase
     .from("verb_drills")
-    .select("id, infinitive, translation, tense, forms")
+    .select("id, infinitive, translation, tense, forms, language")
     .eq("id", id)
     .single();
 
@@ -59,6 +60,7 @@ export default async function VerbDrillDetailPage({
 
   const setVerbDrillAssignmentsWithId = setVerbDrillAssignments.bind(null, id);
   const deleteVerbDrillWithId = deleteVerbDrill.bind(null, id);
+  const updateVerbDrillWithId = updateVerbDrill.bind(null, id);
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
@@ -88,6 +90,46 @@ export default async function VerbDrillDetailPage({
           </li>
         ))}
       </ul>
+
+      <form
+        action={updateVerbDrillWithId}
+        className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4"
+      >
+        <h2 className="font-heading font-bold">Edit drill</h2>
+        <input
+          name="infinitive"
+          dir="auto"
+          defaultValue={drill.infinitive}
+          placeholder="Infinitive"
+          required
+          className="rounded-sm border border-border bg-surface px-3 py-2 text-text"
+        />
+        <input
+          name="translation"
+          defaultValue={drill.translation}
+          placeholder="Meaning"
+          required
+          className="rounded-sm border border-border bg-surface px-3 py-2 text-text"
+        />
+        <select
+          name="language"
+          defaultValue={drill.language ?? ""}
+          className="rounded-sm border border-border bg-surface px-3 py-2 text-text"
+        >
+          <option value="">Language (not set)</option>
+          {Object.entries(LANGUAGE_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <button
+          type="submit"
+          className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
+        >
+          Save changes
+        </button>
+      </form>
 
       <form
         action={setVerbDrillAssignmentsWithId}

@@ -11,6 +11,7 @@ export async function createVerbDrill(formData: FormData) {
   const infinitive = formData.get("infinitive") as string;
   const translation = formData.get("translation") as string;
   const tense = formData.get("tense") as string;
+  const language = (formData.get("language") as string) || null;
   if (!infinitive?.trim() || !translation?.trim() || !TENSE_SLOTS[tense]) return;
 
   const supabase = await createClient();
@@ -39,10 +40,28 @@ export async function createVerbDrill(formData: FormData) {
     tense,
     forms,
     audio_urls: audioUrls,
+    language,
     created_by: user.id,
   });
   if (error) throw new Error(`Failed to save verb drill: ${error.message}`);
 
+  revalidatePath("/teacher/verbs");
+}
+
+export async function updateVerbDrill(drillId: string, formData: FormData) {
+  const infinitive = (formData.get("infinitive") as string)?.trim();
+  const translation = (formData.get("translation") as string)?.trim();
+  const language = (formData.get("language") as string) || null;
+  if (!infinitive || !translation) return;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("verb_drills")
+    .update({ infinitive, translation, language })
+    .eq("id", drillId);
+  if (error) throw new Error(`Failed to update verb drill: ${error.message}`);
+
+  revalidatePath(`/teacher/verbs/${drillId}`);
   revalidatePath("/teacher/verbs");
 }
 
