@@ -93,27 +93,39 @@ export default async function StudentProgressPage({
   const { data: fillBlankAssignments } = await supabase
     .from("fill_blank_assignments")
     .select("drill_id, student_id");
+  const { data: exclusions } = await supabase
+    .from("assignment_exclusions")
+    .select("item_type, item_id")
+    .eq("student_id", id);
+
+  const excludedIds = (itemType: string) =>
+    new Set((exclusions ?? []).filter((e) => e.item_type === itemType).map((e) => e.item_id));
+  const excludedDeckIds = excludedIds("deck");
+  const excludedListeningIds = excludedIds("listening");
+  const excludedVerbIds = excludedIds("verb");
+  const excludedFillBlankIds = excludedIds("fillblank");
 
   const deckStatus = new Map(
     (decks ?? []).map((d) => {
       const rows = (deckAssignments ?? []).filter((a) => a.deck_id === d.id);
+      const everyone = rows.some((r) => r.student_id === null);
+      const individuallyAssigned = rows.some((r) => r.student_id === id);
       return [
         d.id,
-        {
-          everyone: rows.some((r) => r.student_id === null),
-          assigned: rows.some((r) => r.student_id === id),
-        },
+        { everyone, assigned: individuallyAssigned || (everyone && !excludedDeckIds.has(d.id)) },
       ] as const;
     })
   );
   const listeningStatus = new Map(
     (listeningExercises ?? []).map((e) => {
       const rows = (listeningAssignments ?? []).filter((a) => a.exercise_id === e.id);
+      const everyone = rows.some((r) => r.student_id === null);
+      const individuallyAssigned = rows.some((r) => r.student_id === id);
       return [
         e.id,
         {
-          everyone: rows.some((r) => r.student_id === null),
-          assigned: rows.some((r) => r.student_id === id),
+          everyone,
+          assigned: individuallyAssigned || (everyone && !excludedListeningIds.has(e.id)),
         },
       ] as const;
     })
@@ -121,23 +133,24 @@ export default async function StudentProgressPage({
   const verbStatus = new Map(
     (verbDrills ?? []).map((v) => {
       const rows = (verbAssignments ?? []).filter((a) => a.drill_id === v.id);
+      const everyone = rows.some((r) => r.student_id === null);
+      const individuallyAssigned = rows.some((r) => r.student_id === id);
       return [
         v.id,
-        {
-          everyone: rows.some((r) => r.student_id === null),
-          assigned: rows.some((r) => r.student_id === id),
-        },
+        { everyone, assigned: individuallyAssigned || (everyone && !excludedVerbIds.has(v.id)) },
       ] as const;
     })
   );
   const fillBlankStatus = new Map(
     (fillBlankDrills ?? []).map((d) => {
       const rows = (fillBlankAssignments ?? []).filter((a) => a.drill_id === d.id);
+      const everyone = rows.some((r) => r.student_id === null);
+      const individuallyAssigned = rows.some((r) => r.student_id === id);
       return [
         d.id,
         {
-          everyone: rows.some((r) => r.student_id === null),
-          assigned: rows.some((r) => r.student_id === id),
+          everyone,
+          assigned: individuallyAssigned || (everyone && !excludedFillBlankIds.has(d.id)),
         },
       ] as const;
     })
@@ -222,8 +235,8 @@ export default async function StudentProgressPage({
         <h2 className="font-heading font-bold">Assigned content</h2>
         <p className="text-sm text-text-muted">
           Check everything this student should have access to, then save.
-          Items already shared with everyone are checked and locked — no
-          need to assign those individually.
+          Items shared with everyone are checked by default — uncheck one to
+          remove it for just this student, without affecting anyone else.
         </p>
 
         {decks && decks.length > 0 && (
@@ -238,8 +251,7 @@ export default async function StudentProgressPage({
                       type="checkbox"
                       name="decks"
                       value={deck.id}
-                      defaultChecked={status?.assigned || status?.everyone}
-                      disabled={status?.everyone}
+                      defaultChecked={status?.assigned}
                     />
                     <span dir="auto">{deckLabels.get(deck.id)}</span>
                     {status?.everyone && (
@@ -266,8 +278,7 @@ export default async function StudentProgressPage({
                       type="checkbox"
                       name="listening"
                       value={exercise.id}
-                      defaultChecked={status?.assigned || status?.everyone}
-                      disabled={status?.everyone}
+                      defaultChecked={status?.assigned}
                     />
                     <span dir="auto">{listeningLabels.get(exercise.id)}</span>
                     {status?.everyone && (
@@ -292,8 +303,7 @@ export default async function StudentProgressPage({
                       type="checkbox"
                       name="verbs"
                       value={drill.id}
-                      defaultChecked={status?.assigned || status?.everyone}
-                      disabled={status?.everyone}
+                      defaultChecked={status?.assigned}
                     />
                     <span dir="auto">{verbLabels.get(drill.id)}</span>
                     {status?.everyone && (
@@ -320,8 +330,7 @@ export default async function StudentProgressPage({
                       type="checkbox"
                       name="fillblanks"
                       value={drill.id}
-                      defaultChecked={status?.assigned || status?.everyone}
-                      disabled={status?.everyone}
+                      defaultChecked={status?.assigned}
                     />
                     <span dir="auto">{fillBlankLabels.get(drill.id)}</span>
                     {status?.everyone && (

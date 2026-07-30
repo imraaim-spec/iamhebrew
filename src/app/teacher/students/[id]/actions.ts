@@ -3,71 +3,103 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+async function syncAssignmentsForType(
+  supabase: SupabaseServerClient,
+  opts: {
+    assignmentTable: string;
+    idColumn: string;
+    itemType: string;
+    studentId: string;
+    checkedIds: Set<string>;
+  }
+) {
+  const { assignmentTable, idColumn, itemType, studentId, checkedIds } = opts;
+
+  const { data: everyoneRows, error: everyoneError } = await supabase
+    .from(assignmentTable)
+    .select(idColumn)
+    .is("student_id", null);
+  if (everyoneError) {
+    throw new Error(`Failed to load ${itemType} defaults: ${everyoneError.message}`);
+  }
+  const everyoneIds = new Set(
+    (everyoneRows ?? []).map((r) => (r as unknown as Record<string, string>)[idColumn])
+  );
+
+  const { error: deleteError } = await supabase
+    .from(assignmentTable)
+    .delete()
+    .eq("student_id", studentId);
+  if (deleteError) {
+    throw new Error(`Failed to update ${itemType} assignments: ${deleteError.message}`);
+  }
+
+  const individualIds = Array.from(checkedIds).filter((id) => !everyoneIds.has(id));
+  if (individualIds.length > 0) {
+    const { error } = await supabase
+      .from(assignmentTable)
+      .insert(individualIds.map((item_id) => ({ [idColumn]: item_id, student_id: studentId })));
+    if (error) throw new Error(`Failed to save ${itemType} assignments: ${error.message}`);
+  }
+
+  const { error: exclusionDeleteError } = await supabase
+    .from("assignment_exclusions")
+    .delete()
+    .eq("student_id", studentId)
+    .eq("item_type", itemType);
+  if (exclusionDeleteError) {
+    throw new Error(`Failed to update ${itemType} exclusions: ${exclusionDeleteError.message}`);
+  }
+
+  const excludedIds = Array.from(everyoneIds).filter((id) => !checkedIds.has(id));
+  if (excludedIds.length > 0) {
+    const { error } = await supabase.from("assignment_exclusions").insert(
+      excludedIds.map((item_id) => ({
+        student_id: studentId,
+        item_type: itemType,
+        item_id,
+      }))
+    );
+    if (error) throw new Error(`Failed to save ${itemType} exclusions: ${error.message}`);
+  }
+}
+
 export async function setStudentAssignments(studentId: string, formData: FormData) {
   const supabase = await createClient();
 
-  const deckIds = formData.getAll("decks").map(String);
-  const listeningIds = formData.getAll("listening").map(String);
-  const verbIds = formData.getAll("verbs").map(String);
-  const fillBlankIds = formData.getAll("fillblanks").map(String);
-
-  const { error: deckDeleteError } = await supabase
-    .from("assignments")
-    .delete()
-    .eq("student_id", studentId);
-  if (deckDeleteError) {
-    throw new Error(`Failed to update deck assignments: ${deckDeleteError.message}`);
-  }
-  if (deckIds.length > 0) {
-    const { error } = await supabase
-      .from("assignments")
-      .insert(deckIds.map((deck_id) => ({ deck_id, student_id: studentId })));
-    if (error) throw new Error(`Failed to save deck assignments: ${error.message}`);
-  }
-
-  const { error: listeningDeleteError } = await supabase
-    .from("listening_assignments")
-    .delete()
-    .eq("student_id", studentId);
-  if (listeningDeleteError) {
-    throw new Error(`Failed to update listening assignments: ${listeningDeleteError.message}`);
-  }
-  if (listeningIds.length > 0) {
-    const { error } = await supabase
-      .from("listening_assignments")
-      .insert(listeningIds.map((exercise_id) => ({ exercise_id, student_id: studentId })));
-    if (error) throw new Error(`Failed to save listening assignments: ${error.message}`);
-  }
-
-  const { error: verbDeleteError } = await supabase
-    .from("verb_drill_assignments")
-    .delete()
-    .eq("student_id", studentId);
-  if (verbDeleteError) {
-    throw new Error(`Failed to update verb drill assignments: ${verbDeleteError.message}`);
-  }
-  if (verbIds.length > 0) {
-    const { error } = await supabase
-      .from("verb_drill_assignments")
-      .insert(verbIds.map((drill_id) => ({ drill_id, student_id: studentId })));
-    if (error) throw new Error(`Failed to save verb drill assignments: ${error.message}`);
-  }
-
-  const { error: fillBlankDeleteError } = await supabase
-    .from("fill_blank_assignments")
-    .delete()
-    .eq("student_id", studentId);
-  if (fillBlankDeleteError) {
-    throw new Error(`Failed to update fill-in-the-blank assignments: ${fillBlankDeleteError.message}`);
-  }
-  if (fillBlankIds.length > 0) {
-    const { error } = await supabase
-      .from("fill_blank_assignments")
-      .insert(fillBlankIds.map((drill_id) => ({ drill_id, student_id: studentId })));
-    if (error) throw new Error(`Failed to save fill-in-the-blank assignments: ${error.message}`);
-  }
+  await syncAssignmentsForType(supabase, {
+    assignmentTable: "assignments",
+    idColumn: "deck_id",
+    itemType: "deck",
+    studentId,
+    checkedIds: new Set(formData.getAll("decks").map(String)),
+  });
+  await syncAssignmentsForType(supabase, {
+    assignmentTable: "listening_assignments",
+    idColumn: "exercise_id",
+    itemType: "listening",
+    studentId,
+    checkedIds: new Set(formData.getAll("listening").map(String)),
+  });
+  await syncAssignmentsForType(supabase, {
+    assignmentTable: "verb_drill_assignments",
+    idColumn: "drill_id",
+    itemType: "verb",
+    studentId,
+    checkedIds: new Set(formData.getAll("verbs").map(String)),
+  });
+  await syncAssignmentsForType(supabase, {
+    assignmentTable: "fill_blank_assignments",
+    idColumn: "drill_id",
+    itemType: "fillblank",
+    studentId,
+    checkedIds: new Set(formData.getAll("fillblanks").map(String)),
+  });
 
   revalidatePath(`/teacher/students/${studentId}/progress`);
+  revalidatePath("/student");
 }
 
 export async function saveLessonNote(studentId: string, formData: FormData) {
