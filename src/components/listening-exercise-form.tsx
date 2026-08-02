@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { LANGUAGE_LABELS } from "@/lib/language";
+import { SubmitButton } from "@/components/submit-button";
 
 const inputClass = "rounded-sm border border-border bg-surface px-3 py-2 text-text";
 
@@ -26,6 +28,15 @@ export function ListeningExerciseForm({
         required
         className={inputClass}
       />
+
+      <select name="language" defaultValue="" className={inputClass}>
+        <option value="">Language (not set)</option>
+        {Object.entries(LANGUAGE_LABELS).map(([value, label]) => (
+          <option key={value} value={value}>
+            {label}
+          </option>
+        ))}
+      </select>
 
       <div className="flex gap-4 text-sm">
         <label className="flex items-center gap-1">
@@ -103,12 +114,12 @@ export function ListeningExerciseForm({
         />
       </label>
 
-      <button
-        type="submit"
-        className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
+      <SubmitButton
+        pendingText="Uploading, don't click again..."
+        className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover disabled:opacity-60"
       >
         Create exercise
-      </button>
+      </SubmitButton>
     </form>
   );
 }

@@ -2,6 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { generateHebrewAudioUrl, generateFillBlankAudioUrls } from "@/lib/tts";
+import { parseFillBlankSegments } from "@/lib/cloze";
+import { parseFlashcardLines } from "@/lib/flashcards";
+import { uploadListeningAudio } from "@/app/teacher/listening/actions";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -97,6 +101,142 @@ export async function setStudentAssignments(studentId: string, formData: FormDat
     studentId,
     checkedIds: new Set(formData.getAll("fillblanks").map(String)),
   });
+
+  revalidatePath(`/teacher/students/${studentId}/progress`);
+  revalidatePath("/student");
+}
+
+export async function createDeckForStudent(studentId: string, formData: FormData) {
+  const title = (formData.get("title") as string)?.trim();
+  const description = (formData.get("description") as string)?.trim() || null;
+  const language = (formData.get("language") as string) || null;
+  const raw = (formData.get("cards") as string) || "";
+  if (!title) return;
+
+  const cards = parseFlashcardLines(raw);
+  if (cards.length === 0) return;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: deck, error } = await supabase
+    .from("decks")
+    .insert({ title, description, language, created_by: user.id })
+    .select("id")
+    .single();
+  if (error) throw new Error(`Failed to create deck: ${error.message}`);
+
+  for (const { front, back } of cards) {
+    const audioUrl = await generateHebrewAudioUrl(supabase, deck.id, front);
+    const content = { front, back, ...(audioUrl ? { audio_url: audioUrl } : {}) };
+    const { error: cardError } = await supabase
+      .from("cards")
+      .insert({ deck_id: deck.id, type: "flashcard", content });
+    if (cardError) throw new Error(`Failed to save card: ${cardError.message}`);
+  }
+
+  const { error: assignError } = await supabase
+    .from("assignments")
+    .insert({ deck_id: deck.id, student_id: studentId });
+  if (assignError) throw new Error(`Failed to assign deck: ${assignError.message}`);
+
+  revalidatePath(`/teacher/students/${studentId}/progress`);
+  revalidatePath("/student");
+}
+
+export async function createFillBlankDrillForStudent(studentId: string, formData: FormData) {
+  const name = (formData.get("name") as string)?.trim();
+  const description = (formData.get("description") as string)?.trim() || null;
+  const language = (formData.get("language") as string) || null;
+  const raw = (formData.get("batch") as string) || "";
+  if (!name) return;
+
+  const segments = parseFillBlankSegments(raw);
+  if (segments.length === 0) return;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const audioUrls = await generateFillBlankAudioUrls(supabase, segments);
+
+  const { data: drill, error } = await supabase
+    .from("fill_blank_drills")
+    .insert({
+      title: name,
+      description,
+      segments,
+      audio_urls: audioUrls,
+      language,
+      created_by: user.id,
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(`Failed to save drill: ${error.message}`);
+
+  const { error: assignError } = await supabase
+    .from("fill_blank_assignments")
+    .insert({ drill_id: drill.id, student_id: studentId });
+  if (assignError) throw new Error(`Failed to assign drill: ${assignError.message}`);
+
+  revalidatePath(`/teacher/students/${studentId}/progress`);
+  revalidatePath("/student");
+}
+
+export async function createListeningExerciseForStudent(
+  studentId: string,
+  formData: FormData
+) {
+  const title = (formData.get("title") as string)?.trim();
+  const template = (formData.get("template") as string)?.trim();
+  const language = (formData.get("language") as string) || null;
+  if (!title || !template) return;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const audioSourceType = formData.get("audio_source_type") as string;
+  let audioUrl: string | null = null;
+  let youtubeUrl: string | null = null;
+  let youtubeStart: number | null = null;
+
+  if (audioSourceType === "youtube") {
+    youtubeUrl = (formData.get("youtube_url") as string)?.trim() || null;
+    if (!youtubeUrl) return;
+    const startRaw = formData.get("youtube_start") as string;
+    youtubeStart = startRaw ? Number(startRaw) : null;
+  } else if (audioSourceType === "upload") {
+    audioUrl = await uploadListeningAudio(supabase, formData);
+    if (!audioUrl) return;
+  }
+
+  const { data: exercise, error } = await supabase
+    .from("listening_exercises")
+    .insert({
+      title,
+      template,
+      audio_url: audioUrl,
+      youtube_url: youtubeUrl,
+      youtube_start: youtubeStart,
+      language,
+      created_by: user.id,
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(`Failed to create exercise: ${error.message}`);
+
+  const { error: assignError } = await supabase
+    .from("listening_assignments")
+    .insert({ exercise_id: exercise.id, student_id: studentId });
+  if (assignError) throw new Error(`Failed to assign exercise: ${assignError.message}`);
 
   revalidatePath(`/teacher/students/${studentId}/progress`);
   revalidatePath("/student");

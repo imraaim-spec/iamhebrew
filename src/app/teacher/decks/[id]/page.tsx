@@ -13,6 +13,7 @@ import {
 } from "./actions";
 import { updateDeck } from "../actions";
 import { LANGUAGE_LABELS } from "@/lib/language";
+import { SubmitButton } from "@/components/submit-button";
 
 function summarizeCard(type: string, content: Record<string, unknown>) {
   if (type === "flashcard") return `${content.front} → ${content.back}`;
@@ -255,12 +256,12 @@ export default async function DeckDetailPage({
           dir="auto"
           className="rounded-sm border border-border bg-surface px-3 py-2 font-mono text-sm text-text"
         />
-        <button
-          type="submit"
-          className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
+        <SubmitButton
+          pendingText="Adding list — this can take a while for long lists, don't click again..."
+          className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover disabled:opacity-60"
         >
           Add list
-        </button>
+        </SubmitButton>
       </form>
 
       <ul className="flex flex-col gap-2">

@@ -3,12 +3,15 @@ import { createClient } from "@/lib/supabase/server";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { createFillBlankDrill, deleteFillBlankDrill } from "./actions";
 import { LANGUAGE_LABELS } from "@/lib/language";
+import { computeAssignedStudentIdsByItem } from "@/lib/assignment-status";
+import { FilterableContentList, type FilterableItem } from "@/components/filterable-content-list";
+import { SubmitButton } from "@/components/submit-button";
 
 export default async function FillBlankDrillsPage() {
   const supabase = await createClient();
   const { data: drills } = await supabase
     .from("fill_blank_drills")
-    .select("id, title, description, segments")
+    .select("id, title, description, segments, language")
     .order("created_at", { ascending: false });
 
   const { data: students } = await supabase
@@ -16,6 +19,60 @@ export default async function FillBlankDrillsPage() {
     .select("id, email, full_name")
     .eq("role", "student")
     .order("email", { ascending: true });
+
+  const { data: assignmentRows } = await supabase
+    .from("fill_blank_assignments")
+    .select("drill_id, student_id");
+  const { data: exclusionRows } = await supabase
+    .from("assignment_exclusions")
+    .select("item_id, student_id")
+    .eq("item_type", "fillblank");
+
+  const assignedByDrill = computeAssignedStudentIdsByItem({
+    allStudentIds: (students ?? []).map((s) => s.id),
+    assignmentRows: (assignmentRows ?? []).map((a) => ({
+      itemId: a.drill_id,
+      studentId: a.student_id,
+    })),
+    exclusionRows: (exclusionRows ?? []).map((e) => ({
+      itemId: e.item_id,
+      studentId: e.student_id,
+    })),
+  });
+
+  const studentOptions = (students ?? []).map((s) => ({
+    id: s.id,
+    label: s.full_name || s.email,
+  }));
+
+  const items: FilterableItem[] = (drills ?? []).map((drill) => {
+    const deleteFillBlankDrillWithId = deleteFillBlankDrill.bind(null, drill.id);
+    const pieceCount = (drill.segments as string[]).length;
+    return {
+      id: drill.id,
+      searchText: `${drill.title} ${drill.description ?? ""}`,
+      language: drill.language,
+      assignedStudentIds: Array.from(assignedByDrill.get(drill.id) ?? []),
+      node: (
+        <div className="flex items-center justify-between gap-4 rounded-md border border-border bg-surface p-4 hover:bg-bg-alt">
+          <Link href={`/teacher/fill-blanks/${drill.id}`} className="flex-1">
+            <div className="font-medium">{drill.title}</div>
+            {drill.description && (
+              <div className="text-sm text-text-muted">{drill.description}</div>
+            )}
+            <div className="text-sm text-text-faint">
+              {pieceCount} piece{pieceCount === 1 ? "" : "s"}
+            </div>
+          </Link>
+          <ConfirmDeleteButton
+            action={deleteFillBlankDrillWithId}
+            label="Delete"
+            confirmMessage={`Delete "${drill.title}" and all its pieces? This can't be undone.`}
+          />
+        </div>
+      ),
+    };
+  });
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
@@ -104,49 +161,19 @@ export default async function FillBlankDrillsPage() {
           )}
         </div>
 
-        <button
-          type="submit"
-          className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
+        <SubmitButton
+          pendingText="Creating — this can take a while for long drills, don't click again..."
+          className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover disabled:opacity-60"
         >
           Create drill
-        </button>
+        </SubmitButton>
       </form>
 
-      <ul className="flex flex-col gap-2">
-        {drills && drills.length > 0 ? (
-          drills.map((drill) => {
-            const deleteFillBlankDrillWithId = deleteFillBlankDrill.bind(null, drill.id);
-            return (
-              <li
-                key={drill.id}
-                className="flex items-center justify-between gap-4 rounded-md border border-border bg-surface p-4 hover:bg-bg-alt"
-              >
-                <Link href={`/teacher/fill-blanks/${drill.id}`} className="flex-1">
-                  <div className="font-medium">{drill.title}</div>
-                  {drill.description && (
-                    <div className="text-sm text-text-muted">
-                      {drill.description}
-                    </div>
-                  )}
-                  <div className="text-sm text-text-faint">
-                    {(drill.segments as string[]).length} piece
-                    {(drill.segments as string[]).length === 1 ? "" : "s"}
-                  </div>
-                </Link>
-                <ConfirmDeleteButton
-                  action={deleteFillBlankDrillWithId}
-                  label="Delete"
-                  confirmMessage={`Delete "${drill.title}" and all its pieces? This can't be undone.`}
-                />
-              </li>
-            );
-          })
-        ) : (
-          <p className="text-text-muted">
-            No drills yet — create your first one above.
-          </p>
-        )}
-      </ul>
+      <FilterableContentList
+        items={items}
+        students={studentOptions}
+        emptyMessage="No drills yet — create your first one above."
+      />
     </div>
   );
 }

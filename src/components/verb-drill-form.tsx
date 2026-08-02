@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { TENSE_SLOTS, TENSE_LABELS, type Tense } from "@/lib/hebrew-verbs";
 import { LANGUAGE_LABELS } from "@/lib/language";
+import { SubmitButton } from "@/components/submit-button";
 
 const inputClass = "rounded-sm border border-border bg-surface px-3 py-2 text-text";
 
@@ -73,12 +74,12 @@ export function VerbDrillForm({
         automatically for each one you enter. At least 2 are needed.
       </p>
 
-      <button
-        type="submit"
-        className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
+      <SubmitButton
+        pendingText="Creating, don't click again..."
+        className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover disabled:opacity-60"
       >
         Create verb drill
-      </button>
+      </SubmitButton>
     </form>
   );
 }

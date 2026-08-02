@@ -3,32 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { generateHebrewAudioUrl } from "@/lib/tts";
-import { extractSpeakableText } from "@/lib/cloze";
+import { parseFillBlankSegments } from "@/lib/cloze";
+import { generateFillBlankAudioUrls } from "@/lib/tts";
 import { syncItemAssignments } from "@/lib/assignment-sync";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
-
-function parseSegments(raw: string): string[] {
-  // Two-or-more blank lines mark a new piece; a single blank line stays
-  // inside one (e.g. between an example question and its answer).
-  return raw
-    .split(/\n[ \t]*\n[ \t]*\n+/)
-    .map((b) => b.trim())
-    .filter(Boolean);
-}
-
-async function generateAudioUrls(
-  supabase: SupabaseServerClient,
-  segments: string[]
-): Promise<(string | null)[]> {
-  const urls: (string | null)[] = [];
-  for (const segment of segments) {
-    const speakable = extractSpeakableText(segment);
-    urls.push(await generateHebrewAudioUrl(supabase, "fill-blanks", speakable));
-  }
-  return urls;
-}
 
 async function saveAssignments(
   supabase: SupabaseServerClient,
@@ -55,7 +34,7 @@ export async function createFillBlankDrill(formData: FormData) {
   const raw = (formData.get("batch") as string) || "";
   if (!name) return;
 
-  const segments = parseSegments(raw);
+  const segments = parseFillBlankSegments(raw);
   if (segments.length === 0) return;
 
   const supabase = await createClient();
@@ -64,7 +43,7 @@ export async function createFillBlankDrill(formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) return;
 
-  const audioUrls = await generateAudioUrls(supabase, segments);
+  const audioUrls = await generateFillBlankAudioUrls(supabase, segments);
 
   const { data: drill, error } = await supabase
     .from("fill_blank_drills")
@@ -93,11 +72,11 @@ export async function updateFillBlankDrill(drillId: string, formData: FormData) 
   const raw = (formData.get("batch") as string) || "";
   if (!name) return;
 
-  const segments = parseSegments(raw);
+  const segments = parseFillBlankSegments(raw);
   if (segments.length === 0) return;
 
   const supabase = await createClient();
-  const audioUrls = await generateAudioUrls(supabase, segments);
+  const audioUrls = await generateFillBlankAudioUrls(supabase, segments);
 
   const { error } = await supabase
     .from("fill_blank_drills")

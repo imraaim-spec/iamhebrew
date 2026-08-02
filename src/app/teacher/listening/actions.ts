@@ -7,7 +7,7 @@ import { syncItemAssignments } from "@/lib/assignment-sync";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
-async function uploadListeningAudio(
+export async function uploadListeningAudio(
   supabase: SupabaseServerClient,
   formData: FormData
 ): Promise<string | null> {
@@ -29,6 +29,7 @@ async function uploadListeningAudio(
 export async function createListeningExercise(formData: FormData) {
   const title = formData.get("title") as string;
   const template = formData.get("template") as string;
+  const language = (formData.get("language") as string) || null;
   if (!title?.trim() || !template?.trim()) return;
 
   const supabase = await createClient();
@@ -61,9 +62,27 @@ export async function createListeningExercise(formData: FormData) {
     audio_url: audioUrl,
     youtube_url: youtubeUrl,
     youtube_start: youtubeStart,
+    language,
     created_by: user.id,
   });
 
+  revalidatePath("/teacher/listening");
+}
+
+export async function updateListeningExerciseLanguage(
+  exerciseId: string,
+  formData: FormData
+) {
+  const language = (formData.get("language") as string) || null;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("listening_exercises")
+    .update({ language })
+    .eq("id", exerciseId);
+  if (error) throw new Error(`Failed to update language: ${error.message}`);
+
+  revalidatePath(`/teacher/listening/${exerciseId}`);
   revalidatePath("/teacher/listening");
 }
 

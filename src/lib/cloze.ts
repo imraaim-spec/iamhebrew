@@ -47,6 +47,16 @@ export function extractSpeakableText(template: string): string {
     .join(" ");
 }
 
+// Two-or-more blank lines mark a new fill-in-the-blank piece; a single
+// blank line stays inside one (e.g. between an example question and its
+// answer).
+export function parseFillBlankSegments(raw: string): string[] {
+  return raw
+    .split(/\n[ \t]*\n[ \t]*\n+/)
+    .map((b) => b.trim())
+    .filter(Boolean);
+}
+
 export function getYouTubeEmbedUrl(url: string, startSeconds?: number): string | null {
   const match = url.match(
     /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/

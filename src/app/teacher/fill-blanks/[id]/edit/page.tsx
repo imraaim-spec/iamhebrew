@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { updateFillBlankDrill } from "../../actions";
 import { LANGUAGE_LABELS } from "@/lib/language";
+import { SubmitButton } from "@/components/submit-button";
 
 export default async function EditFillBlankDrillPage({
   params,
@@ -68,12 +69,12 @@ export default async function EditFillBlankDrillPage({
           dir="auto"
           className="rounded-sm border border-border bg-surface px-3 py-2 font-mono text-sm text-text"
         />
-        <button
-          type="submit"
-          className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
+        <SubmitButton
+          pendingText="Saving — this can take a while for long drills, don't click again..."
+          className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover disabled:opacity-60"
         >
           Save changes
-        </button>
+        </SubmitButton>
       </form>
     </div>
   );

@@ -1,7 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { deleteListeningExercise, setListeningAssignments } from "../actions";
+import {
+  deleteListeningExercise,
+  setListeningAssignments,
+  updateListeningExerciseLanguage,
+} from "../actions";
+import { LANGUAGE_LABELS } from "@/lib/language";
 
 export default async function ListeningExerciseDetailPage({
   params,
@@ -13,7 +18,7 @@ export default async function ListeningExerciseDetailPage({
 
   const { data: exercise } = await supabase
     .from("listening_exercises")
-    .select("id, title, template")
+    .select("id, title, template, language")
     .eq("id", id)
     .single();
 
@@ -55,6 +60,7 @@ export default async function ListeningExerciseDetailPage({
 
   const setListeningAssignmentsWithId = setListeningAssignments.bind(null, id);
   const deleteListeningExerciseWithId = deleteListeningExercise.bind(null, id);
+  const updateListeningExerciseLanguageWithId = updateListeningExerciseLanguage.bind(null, id);
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
@@ -71,6 +77,33 @@ export default async function ListeningExerciseDetailPage({
       <p dir="auto" className="whitespace-pre-wrap text-text-muted">
         {exercise.template}
       </p>
+
+      <form
+        action={updateListeningExerciseLanguageWithId}
+        className="flex items-center gap-3 rounded-md border border-border bg-surface p-4"
+      >
+        <label className="flex items-center gap-2 text-sm text-text-muted">
+          Language
+          <select
+            name="language"
+            defaultValue={exercise.language ?? ""}
+            className="rounded-sm border border-border bg-surface px-3 py-2 text-text"
+          >
+            <option value="">Not set</option>
+            {Object.entries(LANGUAGE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="submit"
+          className="rounded-sm border border-border px-3 py-2 text-sm text-text-muted hover:bg-bg-alt"
+        >
+          Save
+        </button>
+      </form>
 
       <form
         action={setListeningAssignmentsWithId}

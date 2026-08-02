@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { extractSpeakableText } from "@/lib/cloze";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -51,4 +52,16 @@ export async function generateHebrewAudioUrl(
     console.error("TTS generation threw", err);
     return null;
   }
+}
+
+export async function generateFillBlankAudioUrls(
+  supabase: SupabaseServerClient,
+  segments: string[]
+): Promise<(string | null)[]> {
+  const urls: (string | null)[] = [];
+  for (const segment of segments) {
+    const speakable = extractSpeakableText(segment);
+    urls.push(await generateHebrewAudioUrl(supabase, "fill-blanks", speakable));
+  }
+  return urls;
 }

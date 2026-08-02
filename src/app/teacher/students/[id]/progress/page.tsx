@@ -1,6 +1,9 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
+  createDeckForStudent,
+  createFillBlankDrillForStudent,
+  createListeningExerciseForStudent,
   deleteLessonNote,
   saveLessonNote,
   setStudentAssignments,
@@ -8,6 +11,7 @@ import {
 import { assignCourseToStudent } from "@/app/teacher/courses/actions";
 import { disambiguateLabels } from "@/lib/disambiguate";
 import { groupByLanguage } from "@/lib/language";
+import { CreateStudentContentForm } from "@/components/create-student-content-form";
 
 type CardContent = {
   front?: string;
@@ -163,6 +167,15 @@ export default async function StudentProgressPage({
 
   const setStudentAssignmentsWithId = setStudentAssignments.bind(null, id);
   const saveLessonNoteWithId = saveLessonNote.bind(null, id);
+  const createDeckForStudentWithId = createDeckForStudent.bind(null, id);
+  const createFillBlankDrillForStudentWithId = createFillBlankDrillForStudent.bind(
+    null,
+    id
+  );
+  const createListeningExerciseForStudentWithId = createListeningExerciseForStudent.bind(
+    null,
+    id
+  );
 
   const { data: courses } = await supabase
     .from("courses")
@@ -232,6 +245,12 @@ export default async function StudentProgressPage({
         </h1>
         <p className="text-text-muted">{student.email}</p>
       </div>
+
+      <CreateStudentContentForm
+        createDeckAction={createDeckForStudentWithId}
+        createFillBlankAction={createFillBlankDrillForStudentWithId}
+        createListeningAction={createListeningExerciseForStudentWithId}
+      />
 
       <form
         action={setStudentAssignmentsWithId}

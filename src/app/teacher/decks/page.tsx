@@ -2,13 +2,64 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createDeck } from "./actions";
 import { LANGUAGE_LABELS } from "@/lib/language";
+import { computeAssignedStudentIdsByItem } from "@/lib/assignment-status";
+import { FilterableContentList, type FilterableItem } from "@/components/filterable-content-list";
 
 export default async function DecksPage() {
   const supabase = await createClient();
   const { data: decks } = await supabase
     .from("decks")
-    .select("id, title, description, created_at")
+    .select("id, title, description, language, created_at")
     .order("created_at", { ascending: false });
+
+  const { data: students } = await supabase
+    .from("profiles")
+    .select("id, email, full_name")
+    .eq("role", "student")
+    .order("email", { ascending: true });
+
+  const { data: assignmentRows } = await supabase
+    .from("assignments")
+    .select("deck_id, student_id");
+  const { data: exclusionRows } = await supabase
+    .from("assignment_exclusions")
+    .select("item_id, student_id")
+    .eq("item_type", "deck");
+
+  const assignedByDeck = computeAssignedStudentIdsByItem({
+    allStudentIds: (students ?? []).map((s) => s.id),
+    assignmentRows: (assignmentRows ?? []).map((a) => ({
+      itemId: a.deck_id,
+      studentId: a.student_id,
+    })),
+    exclusionRows: (exclusionRows ?? []).map((e) => ({
+      itemId: e.item_id,
+      studentId: e.student_id,
+    })),
+  });
+
+  const studentOptions = (students ?? []).map((s) => ({
+    id: s.id,
+    label: s.full_name || s.email,
+  }));
+
+  const items: FilterableItem[] = (decks ?? []).map((deck) => ({
+    id: deck.id,
+    searchText: `${deck.title} ${deck.description ?? ""}`,
+    language: deck.language,
+    assignedStudentIds: Array.from(assignedByDeck.get(deck.id) ?? []),
+    node: (
+      <Link
+        href={`/teacher/decks/${deck.id}`}
+        className="block rounded-md border border-border bg-surface p-4 hover:bg-bg-alt"
+      >
+        <div className="font-medium">{deck.title}</div>
+        {deck.description && (
+          <div className="text-sm text-text-muted">{deck.description}</div>
+        )}
+      </Link>
+    ),
+  }));
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
@@ -50,25 +101,11 @@ export default async function DecksPage() {
         </button>
       </form>
 
-      <ul className="flex flex-col gap-2">
-        {decks && decks.length > 0 ? (
-          decks.map((deck) => (
-            <li key={deck.id}>
-              <Link
-                href={`/teacher/decks/${deck.id}`}
-                className="block rounded-md border border-border bg-surface p-4 hover:bg-bg-alt"
-              >
-                <div className="font-medium">{deck.title}</div>
-                {deck.description && (
-                  <div className="text-sm text-text-muted">{deck.description}</div>
-                )}
-              </Link>
-            </li>
-          ))
-        ) : (
-          <p className="text-text-muted">No decks yet — create your first one above.</p>
-        )}
-      </ul>
+      <FilterableContentList
+        items={items}
+        students={studentOptions}
+        emptyMessage="No decks yet — create your first one above."
+      />
     </div>
   );
 }
