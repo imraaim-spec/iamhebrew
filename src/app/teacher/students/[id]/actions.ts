@@ -244,6 +244,7 @@ export async function createListeningExerciseForStudent(
 
 export async function saveLessonNote(studentId: string, formData: FormData) {
   const lessonDate = formData.get("lesson_date") as string;
+  const title = (formData.get("title") as string)?.trim() || null;
   const notesText = (formData.get("notes_text") as string)?.trim() || null;
   const notionUrl = (formData.get("notion_url") as string)?.trim() || null;
   if (!lessonDate) return;
@@ -258,6 +259,7 @@ export async function saveLessonNote(studentId: string, formData: FormData) {
     {
       student_id: studentId,
       lesson_date: lessonDate,
+      title,
       notes_text: notesText,
       notion_url: notionUrl,
       created_by: user.id,
@@ -268,6 +270,7 @@ export async function saveLessonNote(studentId: string, formData: FormData) {
   if (error) throw new Error(`Failed to save note: ${error.message}`);
 
   revalidatePath(`/teacher/students/${studentId}/progress`);
+  revalidatePath("/teacher/students");
 }
 
 export async function deleteLessonNote(noteId: string, studentId: string) {

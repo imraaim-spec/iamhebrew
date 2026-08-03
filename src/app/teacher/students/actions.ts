@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 export async function addStudent(formData: FormData) {
@@ -13,6 +14,7 @@ export async function addStudent(formData: FormData) {
     .insert({ email, full_name: fullName || null, role: "student" });
 
   revalidatePath("/teacher/students");
+  redirect("/teacher/students");
 }
 
 export async function addStudentsBulk(formData: FormData) {
@@ -43,6 +45,7 @@ export async function addStudentsBulk(formData: FormData) {
     .upsert(rows, { onConflict: "email", ignoreDuplicates: true });
 
   revalidatePath("/teacher/students");
+  redirect("/teacher/students");
 }
 
 export async function removeStudent(email: string) {

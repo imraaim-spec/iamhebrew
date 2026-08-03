@@ -184,7 +184,7 @@ export default async function StudentProgressPage({
 
   const { data: lessonNotes } = await supabase
     .from("lesson_notes")
-    .select("id, lesson_date, notes_text, notion_url")
+    .select("id, lesson_date, title, notes_text, notion_url")
     .eq("student_id", id)
     .order("lesson_date", { ascending: false });
 
@@ -192,6 +192,96 @@ export default async function StudentProgressPage({
     ? (lessonNotes ?? []).find((n) => n.lesson_date === editDate)
     : null;
   const todayIso = new Date().toISOString().slice(0, 10);
+
+  // Individually-assigned content (not "everyone" items, which aren't tied
+  // to any particular lesson) grouped by the day it was assigned, to build
+  // a per-lesson breakdown of what was given each session.
+  const dateKey = (iso: string) => iso.slice(0, 10);
+
+  const { data: deckAssignmentsForLessons } = await supabase
+    .from("assignments")
+    .select("assigned_at, deck:decks(id, title)")
+    .eq("student_id", id);
+  const { data: listeningAssignmentsForLessons } = await supabase
+    .from("listening_assignments")
+    .select("assigned_at, exercise:listening_exercises(id, title)")
+    .eq("student_id", id);
+  const { data: verbAssignmentsForLessons } = await supabase
+    .from("verb_drill_assignments")
+    .select("assigned_at, drill:verb_drills(id, infinitive, translation)")
+    .eq("student_id", id);
+  const { data: fillBlankAssignmentsForLessons } = await supabase
+    .from("fill_blank_assignments")
+    .select("assigned_at, drill:fill_blank_drills(id, title)")
+    .eq("student_id", id);
+
+  type LessonTask = { label: string; typeLabel: string };
+  type LessonNoteRow = {
+    id: string;
+    lesson_date: string;
+    title: string | null;
+    notes_text: string | null;
+    notion_url: string | null;
+  };
+  type LessonCabinetEntry = {
+    date: string;
+    note: LessonNoteRow | null;
+    tasks: LessonTask[];
+  };
+
+  const lessonsByDate = new Map<string, LessonCabinetEntry>();
+  function getLessonEntry(date: string): LessonCabinetEntry {
+    let entry = lessonsByDate.get(date);
+    if (!entry) {
+      entry = { date, note: null, tasks: [] };
+      lessonsByDate.set(date, entry);
+    }
+    return entry;
+  }
+
+  for (const a of deckAssignmentsForLessons ?? []) {
+    const deck = a.deck as unknown as { id: string; title: string } | null;
+    if (!deck) continue;
+    getLessonEntry(dateKey(a.assigned_at)).tasks.push({
+      label: deck.title,
+      typeLabel: "Deck",
+    });
+  }
+  for (const a of listeningAssignmentsForLessons ?? []) {
+    const exercise = a.exercise as unknown as { id: string; title: string } | null;
+    if (!exercise) continue;
+    getLessonEntry(dateKey(a.assigned_at)).tasks.push({
+      label: exercise.title,
+      typeLabel: "Listening",
+    });
+  }
+  for (const a of verbAssignmentsForLessons ?? []) {
+    const drill = a.drill as unknown as {
+      id: string;
+      infinitive: string;
+      translation: string;
+    } | null;
+    if (!drill) continue;
+    getLessonEntry(dateKey(a.assigned_at)).tasks.push({
+      label: `${drill.infinitive} — ${drill.translation}`,
+      typeLabel: "Verb Drill",
+    });
+  }
+  for (const a of fillBlankAssignmentsForLessons ?? []) {
+    const drill = a.drill as unknown as { id: string; title: string } | null;
+    if (!drill) continue;
+    getLessonEntry(dateKey(a.assigned_at)).tasks.push({
+      label: drill.title,
+      typeLabel: "Fill in the Blanks",
+    });
+  }
+  for (const note of lessonNotes ?? []) {
+    getLessonEntry(note.lesson_date).note = note;
+  }
+
+  const lessonCabinet = Array.from(lessonsByDate.values()).sort((a, b) =>
+    a.date < b.date ? 1 : -1
+  );
 
   const { data: attempts } = await supabase
     .from("attempts")
@@ -452,24 +542,36 @@ export default async function StudentProgressPage({
         className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4"
       >
         <h2 className="font-heading font-bold">
-          {noteBeingEdited ? "Edit lesson note" : "Add a lesson note"}
+          {noteBeingEdited ? "Edit lesson" : "Add a lesson"}
         </h2>
         <p className="text-sm text-text-muted">
-          One note per day — the student&apos;s wall groups everything
-          assigned that day under this note. Paste a Notion link only if
+          One entry per day — everything assigned that day (from the
+          checklist above or the &quot;create new content&quot; section)
+          automatically groups under it below. Paste a Notion link only if
           that page is shared publicly (&quot;Share to web&quot;), otherwise
           the student won&apos;t be able to open it.
         </p>
-        <label className="text-sm text-text-muted">
-          Date
-          <input
-            type="date"
-            name="lesson_date"
-            defaultValue={noteBeingEdited?.lesson_date ?? todayIso}
-            required
-            className="mt-1 block rounded-sm border border-border bg-surface px-3 py-2 text-text"
-          />
-        </label>
+        <div className="flex gap-3">
+          <label className="text-sm text-text-muted">
+            Date
+            <input
+              type="date"
+              name="lesson_date"
+              defaultValue={noteBeingEdited?.lesson_date ?? todayIso}
+              required
+              className="mt-1 block rounded-sm border border-border bg-surface px-3 py-2 text-text"
+            />
+          </label>
+          <label className="flex-1 text-sm text-text-muted">
+            Title
+            <input
+              name="title"
+              defaultValue={noteBeingEdited?.title ?? ""}
+              placeholder="e.g. Lesson 3"
+              className="mt-1 block w-full rounded-sm border border-border bg-surface px-3 py-2 text-text"
+            />
+          </label>
+        </div>
         <textarea
           name="notes_text"
           defaultValue={noteBeingEdited?.notes_text ?? ""}
@@ -488,55 +590,93 @@ export default async function StudentProgressPage({
           type="submit"
           className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
         >
-          {noteBeingEdited ? "Save changes" : "Add note"}
+          {noteBeingEdited ? "Save changes" : "Add lesson"}
         </button>
       </form>
 
-      {lessonNotes && lessonNotes.length > 0 && (
-        <div className="flex flex-col gap-2">
-          {lessonNotes.map((note) => {
-            const deleteLessonNoteWithIds = deleteLessonNote.bind(null, note.id, id);
+      {lessonCabinet.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <h2 className="font-heading font-bold">Lessons</h2>
+          {lessonCabinet.map((lesson) => {
+            const tasksByType = new Map<string, LessonTask[]>();
+            for (const task of lesson.tasks) {
+              const list = tasksByType.get(task.typeLabel) ?? [];
+              list.push(task);
+              tasksByType.set(task.typeLabel, list);
+            }
+
             return (
               <div
-                key={note.id}
-                className="flex items-start justify-between gap-4 rounded-md border border-border bg-surface p-4"
+                key={lesson.date}
+                className="flex flex-col gap-2 rounded-md border border-border bg-surface p-4"
               >
-                <div>
-                  <div className="text-xs font-semibold uppercase text-text-faint">
-                    {new Date(note.lesson_date).toLocaleDateString()}
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-xs font-semibold uppercase text-text-faint">
+                      {new Date(lesson.date).toLocaleDateString()}
+                    </div>
+                    <div className="font-heading font-bold">
+                      {lesson.note?.title || "Untitled lesson"}
+                    </div>
                   </div>
-                  {note.notes_text && (
-                    <p dir="auto" className="whitespace-pre-wrap text-sm">
-                      {note.notes_text}
-                    </p>
-                  )}
-                  {note.notion_url && (
-                    <a
-                      href={note.notion_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-accent-2 hover:underline"
-                    >
-                      Notion link
-                    </a>
+                  {lesson.note && (
+                    <div className="flex shrink-0 gap-3">
+                      <a
+                        href={`?edit_date=${lesson.note.lesson_date}`}
+                        className="text-sm text-text-faint hover:underline"
+                      >
+                        Edit
+                      </a>
+                      <form action={deleteLessonNote.bind(null, lesson.note.id, id)}>
+                        <button
+                          type="submit"
+                          className="text-sm text-red-600 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      </form>
+                    </div>
                   )}
                 </div>
-                <div className="flex shrink-0 gap-3">
+
+                {lesson.note?.notes_text && (
+                  <p dir="auto" className="whitespace-pre-wrap text-sm">
+                    {lesson.note.notes_text}
+                  </p>
+                )}
+                {lesson.note?.notion_url && (
                   <a
-                    href={`?edit_date=${note.lesson_date}`}
-                    className="text-sm text-text-faint hover:underline"
+                    href={lesson.note.notion_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-accent-2 hover:underline"
                   >
-                    Edit
+                    Notion link
                   </a>
-                  <form action={deleteLessonNoteWithIds}>
-                    <button
-                      type="submit"
-                      className="text-sm text-red-600 hover:underline"
-                    >
-                      Delete
-                    </button>
-                  </form>
-                </div>
+                )}
+
+                {tasksByType.size > 0 ? (
+                  <div className="flex flex-col gap-2 border-t border-border pt-2">
+                    {Array.from(tasksByType.entries()).map(([typeLabel, tasks]) => (
+                      <div key={typeLabel}>
+                        <div className="text-xs font-semibold text-text-faint">
+                          {typeLabel}
+                        </div>
+                        <ul className="text-sm">
+                          {tasks.map((task, i) => (
+                            <li key={i} dir="auto">
+                              {task.label}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-text-faint">
+                    Nothing individually assigned this day.
+                  </p>
+                )}
               </div>
             );
           })}
