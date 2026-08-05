@@ -92,11 +92,25 @@ function FillBlankPiece({
     }
     return Array(blankCount).fill("");
   });
-  const [checked, setChecked] = useState<boolean[] | null>(null);
+  const [checked, setChecked] = useState<(boolean | null)[]>(() =>
+    Array(blankCount).fill(null)
+  );
+
+  const blankAnswers = useMemo(
+    () => segments.filter((s): s is { blank: true; answers: string[] } => "blank" in s),
+    [segments]
+  );
 
   useEffect(() => {
     window.localStorage.setItem(storageKey, JSON.stringify(inputs));
   }, [inputs, storageKey]);
+
+  function isBlankCorrect(blankIdx: number): boolean {
+    const given = inputs[blankIdx] ?? "";
+    if (given.trim() === "") return false;
+    const normalizedGiven = normalizeAnswer(given);
+    return blankAnswers[blankIdx].answers.some((a) => normalizeAnswer(a) === normalizedGiven);
+  }
 
   function updateInput(blankIdx: number, value: string) {
     setInputs((prev) => {
@@ -104,20 +118,28 @@ function FillBlankPiece({
       next[blankIdx] = value;
       return next;
     });
-    setChecked(null);
+    setChecked((prev) => {
+      const next = [...prev];
+      next[blankIdx] = null;
+      return next;
+    });
   }
 
-  function check() {
-    let blankIdx = -1;
-    const results = segments
-      .filter((s): s is { blank: true; answers: string[] } => "blank" in s)
-      .map((seg) => {
-        blankIdx++;
-        const given = inputs[blankIdx] ?? "";
-        if (given.trim() === "") return false;
-        const normalizedGiven = normalizeAnswer(given);
-        return seg.answers.some((a) => normalizeAnswer(a) === normalizedGiven);
-      });
+  function checkOne(blankIdx: number) {
+    const result = isBlankCorrect(blankIdx);
+    setChecked((prev) => {
+      const next = [...prev];
+      next[blankIdx] = result;
+      return next;
+    });
+    logFillBlankAttempt(drillId, segmentIndex, result ? 1 : 0, 1, {
+      inputs,
+      blankIndex: blankIdx,
+    });
+  }
+
+  function checkAll() {
+    const results = blankAnswers.map((_, blankIdx) => isBlankCorrect(blankIdx));
     setChecked(results);
 
     const correctCount = results.filter(Boolean).length;
@@ -134,12 +156,12 @@ function FillBlankPiece({
       }
     }
     setInputs(newInputs);
-    setChecked(null);
+    setChecked(Array(blankCount).fill(null));
   }
 
   function clear() {
     setInputs(Array(blankCount).fill(""));
-    setChecked(null);
+    setChecked(Array(blankCount).fill(null));
   }
 
   let blankIndex = -1;
@@ -157,33 +179,43 @@ function FillBlankPiece({
           const bi = blankIndex;
           const value = inputs[bi] ?? "";
           const isEmpty = value.trim() === "";
-          const isCorrect = checked?.[bi];
+          const result = checked[bi];
 
           let style = "border-border";
-          if (checked !== null && !isEmpty) {
-            style = isCorrect
+          if (result !== null && !isEmpty) {
+            style = result
               ? "border-green-500 bg-green-50"
               : "border-red-500 bg-red-50";
           }
 
           return (
-            <input
-              key={i}
-              value={value}
-              onChange={(e) => updateInput(bi, e.target.value)}
-              dir="rtl"
-              className={`mx-1 inline-block w-48 rounded-sm border bg-surface px-3 py-1 text-center align-baseline text-xl text-text ${style}`}
-            />
+            <span key={i} className="mx-1 inline-flex items-center gap-1 align-baseline">
+              <input
+                value={value}
+                onChange={(e) => updateInput(bi, e.target.value)}
+                dir="rtl"
+                className={`inline-block w-48 rounded-sm border bg-surface px-3 py-1 text-center text-xl text-text ${style}`}
+              />
+              <button
+                type="button"
+                onClick={() => checkOne(bi)}
+                disabled={isEmpty}
+                title="בדוק תשובה זו"
+                className="rounded-sm border border-border px-2 py-1 text-sm text-text-muted hover:bg-bg-alt disabled:opacity-40"
+              >
+                ✓
+              </button>
+            </span>
           );
         })}
       </p>
 
       <div className="flex flex-wrap items-center gap-3">
         <button
-          onClick={check}
+          onClick={checkAll}
           className="rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
         >
-          בדוק
+          בדוק הכל
         </button>
         <button
           onClick={showAnswers}
@@ -197,7 +229,7 @@ function FillBlankPiece({
         >
           נקה
         </button>
-        {checked && (
+        {checked.some((c) => c !== null) && (
           <span className="text-sm text-text-muted">
             נכון: {checked.filter(Boolean).length} מתוך {blankCount}
           </span>
