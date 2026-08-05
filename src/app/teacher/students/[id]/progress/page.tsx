@@ -1,17 +1,19 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import {
+  assignItemToStudent,
   createDeckForStudent,
   createFillBlankDrillForStudent,
   createListeningExerciseForStudent,
   deleteLessonNote,
   saveLessonNote,
-  setStudentAssignments,
+  unassignItemFromStudent,
 } from "../actions";
 import { assignCourseToStudent } from "@/app/teacher/courses/actions";
 import { disambiguateLabels } from "@/lib/disambiguate";
-import { groupByLanguage } from "@/lib/language";
 import { CreateStudentContentForm } from "@/components/create-student-content-form";
+import { AssignExistingItemForm, type AssignableOption } from "@/components/assign-existing-item-form";
 
 type CardContent = {
   front?: string;
@@ -64,7 +66,7 @@ export default async function StudentProgressPage({
     .order("id", { ascending: true });
   const { data: listeningExercises } = await supabase
     .from("listening_exercises")
-    .select("id, title")
+    .select("id, title, language")
     .order("title", { ascending: true })
     .order("id", { ascending: true });
   const { data: verbDrills } = await supabase
@@ -78,9 +80,6 @@ export default async function StudentProgressPage({
     .order("title", { ascending: true })
     .order("id", { ascending: true });
 
-  const deckGroups = groupByLanguage(decks ?? []);
-  const verbGroups = groupByLanguage(verbDrills ?? []);
-  const fillBlankGroups = groupByLanguage(fillBlankDrills ?? []);
 
   const deckLabels = disambiguateLabels(decks ?? [], (d) => d.title);
   const listeningLabels = disambiguateLabels(listeningExercises ?? [], (e) => e.title);
@@ -165,7 +164,10 @@ export default async function StudentProgressPage({
     })
   );
 
-  const setStudentAssignmentsWithId = setStudentAssignments.bind(null, id);
+  const assignDeckToStudent = assignItemToStudent.bind(null, id, "deck");
+  const assignListeningToStudent = assignItemToStudent.bind(null, id, "listening");
+  const assignVerbToStudent = assignItemToStudent.bind(null, id, "verb");
+  const assignFillBlankToStudent = assignItemToStudent.bind(null, id, "fillblank");
   const saveLessonNoteWithId = saveLessonNote.bind(null, id);
   const createDeckForStudentWithId = createDeckForStudent.bind(null, id);
   const createFillBlankDrillForStudentWithId = createFillBlankDrillForStudent.bind(
@@ -215,7 +217,7 @@ export default async function StudentProgressPage({
     .select("assigned_at, drill:fill_blank_drills(id, title)")
     .eq("student_id", id);
 
-  type LessonTask = { label: string; typeLabel: string };
+  type LessonTask = { label: string; typeLabel: string; href: string };
   type LessonNoteRow = {
     id: string;
     lesson_date: string;
@@ -245,6 +247,7 @@ export default async function StudentProgressPage({
     getLessonEntry(dateKey(a.assigned_at)).tasks.push({
       label: deck.title,
       typeLabel: "Deck",
+      href: `/teacher/decks/${deck.id}/study`,
     });
   }
   for (const a of listeningAssignmentsForLessons ?? []) {
@@ -253,6 +256,7 @@ export default async function StudentProgressPage({
     getLessonEntry(dateKey(a.assigned_at)).tasks.push({
       label: exercise.title,
       typeLabel: "Listening",
+      href: `/teacher/listening/${exercise.id}/study`,
     });
   }
   for (const a of verbAssignmentsForLessons ?? []) {
@@ -265,6 +269,7 @@ export default async function StudentProgressPage({
     getLessonEntry(dateKey(a.assigned_at)).tasks.push({
       label: `${drill.infinitive} — ${drill.translation}`,
       typeLabel: "Verb Drill",
+      href: `/teacher/verbs/${drill.id}/study`,
     });
   }
   for (const a of fillBlankAssignmentsForLessons ?? []) {
@@ -273,6 +278,7 @@ export default async function StudentProgressPage({
     getLessonEntry(dateKey(a.assigned_at)).tasks.push({
       label: drill.title,
       typeLabel: "Fill in the Blanks",
+      href: `/teacher/fill-blanks/${drill.id}/study`,
     });
   }
   for (const note of lessonNotes ?? []) {
@@ -342,145 +348,187 @@ export default async function StudentProgressPage({
         createListeningAction={createListeningExerciseForStudentWithId}
       />
 
-      <form
-        action={setStudentAssignmentsWithId}
-        className="flex flex-col gap-4 rounded-md border border-border bg-surface p-4"
-      >
+      <div className="flex flex-col gap-4 rounded-md border border-border bg-surface p-4">
         <h2 className="font-heading font-bold">Assigned content</h2>
         <p className="text-sm text-text-muted">
-          Check everything this student should have access to, then save.
-          Items shared with everyone are checked by default — uncheck one to
-          remove it for just this student, without affecting anyone else.
+          What this student currently has, and a picker to add anything
+          else. Items shared with everyone show &quot;(everyone)&quot; —
+          removing one only affects this student.
         </p>
 
         {decks && decks.length > 0 && (
-          <div>
-            <h3 className="mb-1 text-sm font-semibold text-text-faint">Decks</h3>
-            <div className="flex flex-col gap-3">
-              {deckGroups.map((group) => (
-                <div key={group.key}>
-                  <h4 className="mb-1 text-xs font-semibold text-text-faint">
-                    {group.label}
-                  </h4>
-                  <div className="flex flex-col gap-1">
-                    {group.items.map((deck) => {
-                      const status = deckStatus.get(deck.id);
-                      return (
-                        <label key={deck.id} className="flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            name="decks"
-                            value={deck.id}
-                            defaultChecked={status?.assigned}
-                          />
-                          <span dir="auto">{deckLabels.get(deck.id)}</span>
-                          {status?.everyone && (
-                            <span className="text-xs text-text-faint">(everyone)</span>
-                          )}
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="flex flex-col gap-2 border-t border-border pt-3">
+            <h3 className="text-sm font-semibold text-text-faint">Decks</h3>
+            <ul className="flex flex-col gap-1">
+              {decks
+                .filter((d) => deckStatus.get(d.id)?.assigned)
+                .map((d) => (
+                  <li key={d.id} className="flex items-center justify-between gap-2 text-sm">
+                    <Link
+                      href={`/teacher/decks/${d.id}/study`}
+                      dir="auto"
+                      className="text-accent-2 hover:underline"
+                    >
+                      {deckLabels.get(d.id)}
+                    </Link>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {deckStatus.get(d.id)?.everyone && (
+                        <span className="text-xs text-text-faint">(everyone)</span>
+                      )}
+                      <form action={unassignItemFromStudent.bind(null, id, "deck", d.id)}>
+                        <button type="submit" className="text-xs text-red-600 hover:underline">
+                          Remove
+                        </button>
+                      </form>
+                    </div>
+                  </li>
+                ))}
+            </ul>
+            <AssignExistingItemForm
+              action={assignDeckToStudent}
+              placeholder="Add a deck..."
+              options={decks
+                .filter((d) => !deckStatus.get(d.id)?.assigned)
+                .map(
+                  (d): AssignableOption => ({
+                    id: d.id,
+                    label: deckLabels.get(d.id) ?? d.title,
+                    language: d.language,
+                  })
+                )}
+            />
           </div>
         )}
 
         {listeningExercises && listeningExercises.length > 0 && (
-          <div>
-            <h3 className="mb-1 text-sm font-semibold text-text-faint">
-              Listening Exercises
-            </h3>
-            <div className="flex flex-col gap-1">
-              {listeningExercises.map((exercise) => {
-                const status = listeningStatus.get(exercise.id);
-                return (
-                  <label key={exercise.id} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      name="listening"
-                      value={exercise.id}
-                      defaultChecked={status?.assigned}
-                    />
-                    <span dir="auto">{listeningLabels.get(exercise.id)}</span>
-                    {status?.everyone && (
-                      <span className="text-xs text-text-faint">(everyone)</span>
-                    )}
-                  </label>
-                );
-              })}
-            </div>
+          <div className="flex flex-col gap-2 border-t border-border pt-3">
+            <h3 className="text-sm font-semibold text-text-faint">Listening Exercises</h3>
+            <ul className="flex flex-col gap-1">
+              {listeningExercises
+                .filter((e) => listeningStatus.get(e.id)?.assigned)
+                .map((e) => (
+                  <li key={e.id} className="flex items-center justify-between gap-2 text-sm">
+                    <Link
+                      href={`/teacher/listening/${e.id}/study`}
+                      dir="auto"
+                      className="text-accent-2 hover:underline"
+                    >
+                      {listeningLabels.get(e.id)}
+                    </Link>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {listeningStatus.get(e.id)?.everyone && (
+                        <span className="text-xs text-text-faint">(everyone)</span>
+                      )}
+                      <form action={unassignItemFromStudent.bind(null, id, "listening", e.id)}>
+                        <button type="submit" className="text-xs text-red-600 hover:underline">
+                          Remove
+                        </button>
+                      </form>
+                    </div>
+                  </li>
+                ))}
+            </ul>
+            <AssignExistingItemForm
+              action={assignListeningToStudent}
+              placeholder="Add a listening exercise..."
+              options={listeningExercises
+                .filter((e) => !listeningStatus.get(e.id)?.assigned)
+                .map(
+                  (e): AssignableOption => ({
+                    id: e.id,
+                    label: listeningLabels.get(e.id) ?? e.title,
+                    language: e.language,
+                  })
+                )}
+            />
           </div>
         )}
 
         {verbDrills && verbDrills.length > 0 && (
-          <div>
-            <h3 className="mb-1 text-sm font-semibold text-text-faint">Verb Drills</h3>
-            <div className="flex flex-col gap-3">
-              {verbGroups.map((group) => (
-                <div key={group.key}>
-                  <h4 className="mb-1 text-xs font-semibold text-text-faint">
-                    {group.label}
-                  </h4>
-                  <div className="flex flex-col gap-1">
-                    {group.items.map((drill) => {
-                      const status = verbStatus.get(drill.id);
-                      return (
-                        <label key={drill.id} className="flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            name="verbs"
-                            value={drill.id}
-                            defaultChecked={status?.assigned}
-                          />
-                          <span dir="auto">{verbLabels.get(drill.id)}</span>
-                          {status?.everyone && (
-                            <span className="text-xs text-text-faint">(everyone)</span>
-                          )}
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="flex flex-col gap-2 border-t border-border pt-3">
+            <h3 className="text-sm font-semibold text-text-faint">Verb Drills</h3>
+            <ul className="flex flex-col gap-1">
+              {verbDrills
+                .filter((v) => verbStatus.get(v.id)?.assigned)
+                .map((v) => (
+                  <li key={v.id} className="flex items-center justify-between gap-2 text-sm">
+                    <Link
+                      href={`/teacher/verbs/${v.id}/study`}
+                      dir="auto"
+                      className="text-accent-2 hover:underline"
+                    >
+                      {verbLabels.get(v.id)}
+                    </Link>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {verbStatus.get(v.id)?.everyone && (
+                        <span className="text-xs text-text-faint">(everyone)</span>
+                      )}
+                      <form action={unassignItemFromStudent.bind(null, id, "verb", v.id)}>
+                        <button type="submit" className="text-xs text-red-600 hover:underline">
+                          Remove
+                        </button>
+                      </form>
+                    </div>
+                  </li>
+                ))}
+            </ul>
+            <AssignExistingItemForm
+              action={assignVerbToStudent}
+              placeholder="Add a verb drill..."
+              options={verbDrills
+                .filter((v) => !verbStatus.get(v.id)?.assigned)
+                .map(
+                  (v): AssignableOption => ({
+                    id: v.id,
+                    label: verbLabels.get(v.id) ?? `${v.infinitive} — ${v.translation}`,
+                    language: v.language,
+                  })
+                )}
+            />
           </div>
         )}
 
         {fillBlankDrills && fillBlankDrills.length > 0 && (
-          <div>
-            <h3 className="mb-1 text-sm font-semibold text-text-faint">
-              Fill in the Blanks
-            </h3>
-            <div className="flex flex-col gap-3">
-              {fillBlankGroups.map((group) => (
-                <div key={group.key}>
-                  <h4 className="mb-1 text-xs font-semibold text-text-faint">
-                    {group.label}
-                  </h4>
-                  <div className="flex flex-col gap-1">
-                    {group.items.map((drill) => {
-                      const status = fillBlankStatus.get(drill.id);
-                      return (
-                        <label key={drill.id} className="flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            name="fillblanks"
-                            value={drill.id}
-                            defaultChecked={status?.assigned}
-                          />
-                          <span dir="auto">{fillBlankLabels.get(drill.id)}</span>
-                          {status?.everyone && (
-                            <span className="text-xs text-text-faint">(everyone)</span>
-                          )}
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="flex flex-col gap-2 border-t border-border pt-3">
+            <h3 className="text-sm font-semibold text-text-faint">Fill in the Blanks</h3>
+            <ul className="flex flex-col gap-1">
+              {fillBlankDrills
+                .filter((d) => fillBlankStatus.get(d.id)?.assigned)
+                .map((d) => (
+                  <li key={d.id} className="flex items-center justify-between gap-2 text-sm">
+                    <Link
+                      href={`/teacher/fill-blanks/${d.id}/study`}
+                      dir="auto"
+                      className="text-accent-2 hover:underline"
+                    >
+                      {fillBlankLabels.get(d.id)}
+                    </Link>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {fillBlankStatus.get(d.id)?.everyone && (
+                        <span className="text-xs text-text-faint">(everyone)</span>
+                      )}
+                      <form action={unassignItemFromStudent.bind(null, id, "fillblank", d.id)}>
+                        <button type="submit" className="text-xs text-red-600 hover:underline">
+                          Remove
+                        </button>
+                      </form>
+                    </div>
+                  </li>
+                ))}
+            </ul>
+            <AssignExistingItemForm
+              action={assignFillBlankToStudent}
+              placeholder="Add a fill-in-the-blank drill..."
+              options={fillBlankDrills
+                .filter((d) => !fillBlankStatus.get(d.id)?.assigned)
+                .map(
+                  (d): AssignableOption => ({
+                    id: d.id,
+                    label: fillBlankLabels.get(d.id) ?? d.title,
+                    language: d.language,
+                  })
+                )}
+            />
           </div>
         )}
 
@@ -493,14 +541,7 @@ export default async function StudentProgressPage({
               drill, or fill-in-the-blank drill first.
             </p>
           )}
-
-        <button
-          type="submit"
-          className="self-start rounded-sm bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
-        >
-          Save assignments
-        </button>
-      </form>
+      </div>
 
       {courses && courses.length > 0 && (
         <div className="flex flex-col gap-2 rounded-md border border-border bg-surface p-4">
@@ -665,7 +706,9 @@ export default async function StudentProgressPage({
                         <ul className="text-sm">
                           {tasks.map((task, i) => (
                             <li key={i} dir="auto">
-                              {task.label}
+                              <Link href={task.href} className="text-accent-2 hover:underline">
+                                {task.label}
+                              </Link>
                             </li>
                           ))}
                         </ul>
