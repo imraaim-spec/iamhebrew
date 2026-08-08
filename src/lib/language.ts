@@ -1,11 +1,12 @@
 export const LANGUAGE_LABELS: Record<string, string> = {
   english: "English",
   russian: "Russian",
+  french: "French",
 };
 
 export type Language = keyof typeof LANGUAGE_LABELS;
 
-const GROUP_ORDER = ["english", "russian", "unspecified"];
+const GROUP_ORDER = ["english", "russian", "french", "unspecified"];
 
 export function groupByLanguage<T extends { language: string | null }>(
   items: T[]
