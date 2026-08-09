@@ -6,9 +6,9 @@ import { SubmitButton } from "@/components/submit-button";
 
 const inputClass = "rounded-sm border border-border bg-surface px-3 py-2 text-text";
 
-function LanguageSelect() {
+function LanguageSelect({ defaultLanguage }: { defaultLanguage?: string | null }) {
   return (
-    <select name="language" defaultValue="" className={inputClass}>
+    <select name="language" defaultValue={defaultLanguage ?? ""} className={inputClass}>
       <option value="">Language (not set)</option>
       {Object.entries(LANGUAGE_LABELS).map(([value, label]) => (
         <option key={value} value={value}>
@@ -23,10 +23,12 @@ export function CreateStudentContentForm({
   createDeckAction,
   createFillBlankAction,
   createListeningAction,
+  defaultLanguage,
 }: {
   createDeckAction: (formData: FormData) => void;
   createFillBlankAction: (formData: FormData) => void;
   createListeningAction: (formData: FormData) => void;
+  defaultLanguage?: string | null;
 }) {
   const [type, setType] = useState("");
   const [audioSourceType, setAudioSourceType] = useState<"upload" | "youtube" | "none">(
@@ -63,7 +65,7 @@ export function CreateStudentContentForm({
             placeholder="Description (optional)"
             className={inputClass}
           />
-          <LanguageSelect />
+          <LanguageSelect defaultLanguage={defaultLanguage} />
           <p className="text-sm text-text-muted">
             Paste one word/phrase per line — Hebrew and its translation.
             Pasting two columns straight from a spreadsheet works
@@ -104,7 +106,7 @@ export function CreateStudentContentForm({
             rows={2}
             className={inputClass}
           />
-          <LanguageSelect />
+          <LanguageSelect defaultLanguage={defaultLanguage} />
           <p className="text-sm text-text-muted">
             Mark each blank with square brackets around the correct answer
             (use a slash for more than one acceptable answer). Separate the
@@ -138,7 +140,7 @@ export function CreateStudentContentForm({
             required
             className={inputClass}
           />
-          <LanguageSelect />
+          <LanguageSelect defaultLanguage={defaultLanguage} />
 
           <div className="flex gap-4 text-sm">
             <label className="flex items-center gap-1">

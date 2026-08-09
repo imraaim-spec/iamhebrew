@@ -8,10 +8,12 @@ import {
   createListeningExerciseForStudent,
   deleteLessonNote,
   saveLessonNote,
+  setStudentLanguage,
   unassignItemFromStudent,
 } from "../actions";
 import { assignCourseToStudent } from "@/app/teacher/courses/actions";
 import { disambiguateLabels } from "@/lib/disambiguate";
+import { LANGUAGE_LABELS } from "@/lib/language";
 import { CreateStudentContentForm } from "@/components/create-student-content-form";
 import { AssignExistingItemForm, type AssignableOption } from "@/components/assign-existing-item-form";
 
@@ -52,7 +54,7 @@ export default async function StudentProgressPage({
 
   const { data: student } = await supabase
     .from("profiles")
-    .select("id, email, full_name")
+    .select("id, email, full_name, language")
     .eq("id", id)
     .eq("role", "student")
     .single();
@@ -335,17 +337,46 @@ export default async function StudentProgressPage({
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
-      <div>
-        <h1 className="text-2xl">
-          {student.full_name || student.email}
-        </h1>
-        <p className="text-text-muted">{student.email}</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl">
+            {student.full_name || student.email}
+          </h1>
+          <p className="text-text-muted">{student.email}</p>
+        </div>
+        <form
+          action={setStudentLanguage.bind(null, id)}
+          className="flex items-center gap-2"
+        >
+          <label className="text-sm text-text-muted">
+            Studies in
+            <select
+              name="language"
+              defaultValue={student.language ?? ""}
+              className="ml-2 rounded-sm border border-border bg-surface px-2 py-1.5 text-sm text-text"
+            >
+              <option value="">Not set</option>
+              {Object.entries(LANGUAGE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="submit"
+            className="rounded-sm border border-border px-3 py-1.5 text-sm text-text-muted hover:bg-bg-alt"
+          >
+            Save
+          </button>
+        </form>
       </div>
 
       <CreateStudentContentForm
         createDeckAction={createDeckForStudentWithId}
         createFillBlankAction={createFillBlankDrillForStudentWithId}
         createListeningAction={createListeningExerciseForStudentWithId}
+        defaultLanguage={student.language}
       />
 
       <div className="flex flex-col gap-4 rounded-md border border-border bg-surface p-4">
@@ -385,6 +416,7 @@ export default async function StudentProgressPage({
                 ))}
             </ul>
             <AssignExistingItemForm
+              defaultLanguage={student.language}
               action={assignDeckToStudent}
               placeholder="Add a deck..."
               options={decks
@@ -429,6 +461,7 @@ export default async function StudentProgressPage({
                 ))}
             </ul>
             <AssignExistingItemForm
+              defaultLanguage={student.language}
               action={assignListeningToStudent}
               placeholder="Add a listening exercise..."
               options={listeningExercises
@@ -473,6 +506,7 @@ export default async function StudentProgressPage({
                 ))}
             </ul>
             <AssignExistingItemForm
+              defaultLanguage={student.language}
               action={assignVerbToStudent}
               placeholder="Add a verb drill..."
               options={verbDrills
@@ -517,6 +551,7 @@ export default async function StudentProgressPage({
                 ))}
             </ul>
             <AssignExistingItemForm
+              defaultLanguage={student.language}
               action={assignFillBlankToStudent}
               placeholder="Add a fill-in-the-blank drill..."
               options={fillBlankDrills

@@ -31,6 +31,20 @@ async function isEveryoneItem(
   return !!data;
 }
 
+export async function setStudentLanguage(studentId: string, formData: FormData) {
+  const language = (formData.get("language") as string) || null;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ language })
+    .eq("id", studentId);
+  if (error) throw new Error(`Failed to save language: ${error.message}`);
+
+  revalidatePath(`/teacher/students/${studentId}/progress`);
+  revalidatePath("/teacher/students");
+}
+
 export async function assignItemToStudent(
   studentId: string,
   itemType: string,

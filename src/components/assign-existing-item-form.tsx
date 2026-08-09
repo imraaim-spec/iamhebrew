@@ -10,12 +10,14 @@ export function AssignExistingItemForm({
   action,
   options,
   placeholder,
+  defaultLanguage,
 }: {
   action: (formData: FormData) => void;
   options: AssignableOption[];
   placeholder: string;
+  defaultLanguage?: string | null;
 }) {
-  const [language, setLanguage] = useState("");
+  const [language, setLanguage] = useState(defaultLanguage ?? "");
 
   if (options.length === 0) {
     return <p className="text-sm text-text-faint">Nothing else to add.</p>;
