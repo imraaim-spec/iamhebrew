@@ -351,6 +351,7 @@ export default async function StudentProgressPage({
           <label className="text-sm text-text-muted">
             Studies in
             <select
+              key={student.language ?? "none"}
               name="language"
               defaultValue={student.language ?? ""}
               className="ml-2 rounded-sm border border-border bg-surface px-2 py-1.5 text-sm text-text"
@@ -373,6 +374,7 @@ export default async function StudentProgressPage({
       </div>
 
       <CreateStudentContentForm
+        key={student.language ?? "none"}
         createDeckAction={createDeckForStudentWithId}
         createFillBlankAction={createFillBlankDrillForStudentWithId}
         createListeningAction={createListeningExerciseForStudentWithId}
@@ -416,6 +418,7 @@ export default async function StudentProgressPage({
                 ))}
             </ul>
             <AssignExistingItemForm
+              key={student.language ?? "none"}
               defaultLanguage={student.language}
               action={assignDeckToStudent}
               placeholder="Add a deck..."
@@ -461,6 +464,7 @@ export default async function StudentProgressPage({
                 ))}
             </ul>
             <AssignExistingItemForm
+              key={student.language ?? "none"}
               defaultLanguage={student.language}
               action={assignListeningToStudent}
               placeholder="Add a listening exercise..."
@@ -506,6 +510,7 @@ export default async function StudentProgressPage({
                 ))}
             </ul>
             <AssignExistingItemForm
+              key={student.language ?? "none"}
               defaultLanguage={student.language}
               action={assignVerbToStudent}
               placeholder="Add a verb drill..."
@@ -551,6 +556,7 @@ export default async function StudentProgressPage({
                 ))}
             </ul>
             <AssignExistingItemForm
+              key={student.language ?? "none"}
               defaultLanguage={student.language}
               action={assignFillBlankToStudent}
               placeholder="Add a fill-in-the-blank drill..."
