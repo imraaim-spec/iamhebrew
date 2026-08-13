@@ -2,21 +2,40 @@
 
 :root {
   /* Colors: surfaces */
-  --bg: #FAF6EF;
-  --bg-alt: #F1E8D8;
+  --bg: #F8F3EA;
+  --bg-alt: #EDE7DC;
   --surface: #FFFFFF;
-  --border-color: #E6DCC8;
+  --surface-raised: #FEFCF9;
+  --border-color: #E4DED4;
 
   /* Colors: text */
-  --text: #2B2823;
-  --text-muted: #5B5648;
-  --text-faint: #7A7364;
+  --text: #2E2A24;
+  --text-muted: #7D7466;
+  --text-faint: #948A7B;
 
-  /* Colors: accents */
-  --accent: #C9673A;
-  --accent-hover: #B85A2F;
-  --accent-2: #1F6F6B;
-  --accent-2-hover: #175650;
+  /* Colors: accents — sage/teal family */
+  --accent: #35786F;
+  --accent-hover: #2B6259;
+  --accent-soft: #A3C6C4;
+  --accent-tint: #DCEAE7;
+  --accent-2: #C17B94;
+  --accent-2-hover: #A8637C;
+
+  /* Colors: one per content type */
+  --type-flashcards: #4E7A55;
+  --type-flashcards-tint: #DFEBDC;
+  --type-verbs: #35786F;
+  --type-verbs-tint: #D9E9E5;
+  --type-listening: #C17B94;
+  --type-listening-tint: #F2E2E7;
+  --type-fill: #8C6E96;
+  --type-fill-tint: #E9E1EC;
+
+  /* Colors: status */
+  --ok: #3F8A4E;
+  --ok-tint: #DFEEE2;
+  --bad: #C0392B;
+  --bad-tint: #F6E2DF;
 
   /* Typography scale (desktop) */
   --text-hero: 2.75rem;
@@ -27,16 +46,17 @@
   --text-small: 0.875rem;
   --text-eyebrow: 0.75rem;
 
-  --line-height-heading: 1.3;
+  --line-height-heading: 1.25;
   --line-height-body: 1.6;
 
   /* Radii */
-  --radius-sm-val: 8px;
-  --radius-md-val: 10px;
-  --radius-lg-val: 16px;
+  --radius-sm-val: 10px;
+  --radius-md-val: 14px;
+  --radius-lg-val: 18px;
+  --radius-xl-val: 22px;
 
-  --max-width-content: 1120px;
-  --max-width-text: 640px;
+  --max-width-content: 1180px;
+  --max-width-text: 760px;
 }
 
 @media (max-width: 640px) {
@@ -51,14 +71,32 @@
   --color-bg: var(--bg);
   --color-bg-alt: var(--bg-alt);
   --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
   --color-border: var(--border-color);
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-text-faint: var(--text-faint);
+
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-tint: var(--accent-tint);
   --color-accent-2: var(--accent-2);
   --color-accent-2-hover: var(--accent-2-hover);
+
+  --color-type-flashcards: var(--type-flashcards);
+  --color-type-flashcards-tint: var(--type-flashcards-tint);
+  --color-type-verbs: var(--type-verbs);
+  --color-type-verbs-tint: var(--type-verbs-tint);
+  --color-type-listening: var(--type-listening);
+  --color-type-listening-tint: var(--type-listening-tint);
+  --color-type-fill: var(--type-fill);
+  --color-type-fill-tint: var(--type-fill-tint);
+
+  --color-ok: var(--ok);
+  --color-ok-tint: var(--ok-tint);
+  --color-bad: var(--bad);
+  --color-bad-tint: var(--bad-tint);
 
   --font-heading: var(--font-heading);
   --font-body: var(--font-body);
@@ -66,6 +104,7 @@
   --radius-sm: var(--radius-sm-val);
   --radius-md: var(--radius-md-val);
   --radius-lg: var(--radius-lg-val);
+  --radius-xl: var(--radius-xl-val);
 }
 
 body {
@@ -81,10 +120,34 @@ h1, h2, h3, .heading {
   font-weight: 700;
   line-height: var(--line-height-heading);
   color: var(--text);
+  text-wrap: balance;
 }
 
+/* Hebrew is isolated so it doesn't drag surrounding punctuation around.
+   The font stacks handle the glyphs themselves — Latin resolves to
+   Bricolage/Work Sans, Hebrew falls through to Assistant, Cyrillic to
+   the system UI face. */
 [lang="he"] {
   direction: rtl;
-  font-family: var(--font-heading);
   unicode-bidi: isolate;
+}
+
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-rise-in { animation: riseIn 0.3s ease; }
+.animate-pop-in { animation: popIn 0.2s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise-in,
+  .animate-pop-in {
+    animation: none;
+  }
 }

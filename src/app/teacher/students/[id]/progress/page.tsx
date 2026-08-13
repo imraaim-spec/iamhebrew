@@ -14,7 +14,11 @@ import {
 import { assignCourseToStudent } from "@/app/teacher/courses/actions";
 import { disambiguateLabels } from "@/lib/disambiguate";
 import { LANGUAGE_LABELS } from "@/lib/language";
+import { MATURE_INTERVAL_DAYS } from "@/lib/srs";
 import { CreateStudentContentForm } from "@/components/create-student-content-form";
+import { StudentProfileHeader } from "@/components/student-profile-header";
+import { AccuracyDonut } from "@/components/accuracy-donut";
+import { RecentActivity } from "@/components/recent-activity";
 import { AssignExistingItemForm, type AssignableOption } from "@/components/assign-existing-item-form";
 
 type CardContent = {
@@ -305,15 +309,68 @@ export default async function StudentProgressPage({
   const correctCount = all.filter((a) => a.is_correct).length;
   const overallPct = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
 
-  // Per-deck breakdown
-  const deckStats = new Map<string, { title: string; total: number; correct: number }>();
+  // Per-deck breakdown: review counts and accuracy from the attempt log,
+  // plus where each deck stands in the spaced-repetition schedule.
+  type DeckStat = {
+    title: string;
+    total: number;
+    correct: number;
+    lastStudied: string | null;
+    started: number;
+    mature: number;
+    dueToday: number;
+  };
+  const deckStats = new Map<string, DeckStat>();
+  function deckStat(deckId: string, title: string): DeckStat {
+    const entry = deckStats.get(deckId) ?? {
+      title,
+      total: 0,
+      correct: 0,
+      lastStudied: null,
+      started: 0,
+      mature: 0,
+      dueToday: 0,
+    };
+    deckStats.set(deckId, entry);
+    return entry;
+  }
+
   for (const a of all) {
     const deck = a.card?.deck;
     if (!deck) continue;
-    const entry = deckStats.get(deck.id) ?? { title: deck.title, total: 0, correct: 0 };
+    const entry = deckStat(deck.id, deck.title);
     entry.total += 1;
     if (a.is_correct) entry.correct += 1;
-    deckStats.set(deck.id, entry);
+    // Attempts come back newest-first, so the first one seen per deck wins.
+    if (!entry.lastStudied) entry.lastStudied = a.attempted_at;
+  }
+
+  const { data: cardSchedules } = await supabase
+    .from("card_schedules")
+    .select("interval_days, due_on, card:cards(id, deck:decks(id, title))")
+    .eq("student_id", id)
+    .returns<
+      {
+        interval_days: number;
+        due_on: string;
+        card: { id: string; deck: { id: string; title: string } | null } | null;
+      }[]
+    >();
+
+  const todayForDue = todayIso;
+  for (const s of cardSchedules ?? []) {
+    const deck = s.card?.deck;
+    if (!deck) continue;
+    const entry = deckStat(deck.id, deck.title);
+    entry.started += 1;
+    if (s.interval_days >= MATURE_INTERVAL_DAYS) entry.mature += 1;
+    if (s.due_on <= todayForDue) entry.dueToday += 1;
+  }
+
+  const deckCardCounts = new Map<string, number>();
+  const { data: deckCardRows } = await supabase.from("cards").select("deck_id").eq("type", "flashcard");
+  for (const row of deckCardRows ?? []) {
+    deckCardCounts.set(row.deck_id, (deckCardCounts.get(row.deck_id) ?? 0) + 1);
   }
 
   // Weak spots: cards with the most incorrect answers, worst accuracy first
@@ -335,15 +392,23 @@ export default async function StudentProgressPage({
     .sort((a, b) => a.correct / a.total - b.correct / b.total)
     .slice(0, 10);
 
+  const countAssigned = (statuses: Map<string, { assigned: boolean }>) =>
+    Array.from(statuses.values()).filter((s) => s.assigned).length;
+  const activeDrillCount =
+    countAssigned(deckStatus) +
+    countAssigned(listeningStatus) +
+    countAssigned(verbStatus) +
+    countAssigned(fillBlankStatus);
+
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl">
-            {student.full_name || student.email}
-          </h1>
-          <p className="text-text-muted">{student.email}</p>
-        </div>
+    <div className="mx-auto flex max-w-3xl flex-col gap-8">
+      <StudentProfileHeader
+        fullName={student.full_name}
+        email={student.email}
+        lessonCount={lessonCabinet.length}
+        accuracyPct={totalCount > 0 ? overallPct : null}
+        activeDrillCount={activeDrillCount}
+      >
         <form
           action={setStudentLanguage.bind(null, id)}
           className="flex items-center gap-2"
@@ -371,7 +436,7 @@ export default async function StudentProgressPage({
             Save
           </button>
         </form>
-      </div>
+      </StudentProfileHeader>
 
       <CreateStudentContentForm
         key={student.language ?? "none"}
@@ -767,68 +832,97 @@ export default async function StudentProgressPage({
         </div>
       )}
 
-      <div className="rounded-md border border-border bg-surface p-4">
-        <h2 className="mb-2 font-heading font-bold">Overall</h2>
-        {totalCount > 0 ? (
-          <p className="text-text-muted">
-            {correctCount} / {totalCount} correct ({overallPct}%)
-          </p>
-        ) : (
-          <p className="text-text-muted">
-            No activity yet — nothing practiced.
-          </p>
-        )}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="rounded-lg border border-border bg-surface p-5">
+          <h2 className="mb-3 font-heading text-sm font-bold">Overall</h2>
+          <div className="flex items-center gap-4">
+            <AccuracyDonut pct={totalCount > 0 ? overallPct : null} />
+            <p className="text-[13.5px] text-text-muted">
+              {totalCount > 0
+                ? `${correctCount} / ${totalCount} correct across all drills`
+                : "No activity yet — nothing practised."}
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-border bg-surface p-5">
+          <h2 className="mb-3 font-heading text-sm font-bold">Weak spots</h2>
+          {weakSpots.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {weakSpots.map((w, i) => (
+                <span
+                  key={i}
+                  dir="auto"
+                  className="rounded-full bg-bad-tint px-3 py-1.5 text-[12.5px] font-semibold text-bad"
+                  title={`${w.correct} / ${w.total} correct`}
+                >
+                  {w.label}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[13.5px] text-text-muted">
+              Nothing standing out yet.
+            </p>
+          )}
+        </div>
       </div>
 
       {deckStats.size > 0 && (
         <div className="rounded-md border border-border bg-surface p-4">
           <h2 className="mb-2 font-heading font-bold">By deck</h2>
-          <ul className="flex flex-col gap-1">
-            {Array.from(deckStats.values()).map((d) => (
-              <li key={d.title} className="text-sm text-text-muted">
-                {d.title}: {d.correct} / {d.total} correct (
-                {Math.round((d.correct / d.total) * 100)}%)
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {weakSpots.length > 0 && (
-        <div className="rounded-md border border-border bg-surface p-4">
-          <h2 className="mb-2 font-heading font-bold">Weak spots</h2>
-          <ul className="flex flex-col gap-1">
-            {weakSpots.map((w, i) => (
-              <li key={i} dir="auto" className="text-sm text-text-muted">
-                {w.label} — {w.correct} / {w.total} correct
-              </li>
-            ))}
+          <p className="mb-3 text-sm text-text-muted">
+            &quot;Learned&quot; means the card&apos;s review gap has stretched
+            past {MATURE_INTERVAL_DAYS} days — it&apos;s sticking rather than
+            still being drilled.
+          </p>
+          <ul className="flex flex-col gap-3">
+            {Array.from(deckStats.entries()).map(([deckId, d]) => {
+              const totalCards = deckCardCounts.get(deckId) ?? 0;
+              return (
+                <li key={deckId} className="border-t border-border pt-2 text-sm">
+                  <div dir="auto" className="font-medium text-text">
+                    {d.title}
+                  </div>
+                  <div className="text-text-muted">
+                    {d.total > 0 ? (
+                      <>
+                        {d.correct} / {d.total} correct (
+                        {Math.round((d.correct / d.total) * 100)}%)
+                      </>
+                    ) : (
+                      "Not practised yet"
+                    )}
+                    {d.lastStudied && (
+                      <> · last studied {new Date(d.lastStudied).toLocaleDateString()}</>
+                    )}
+                  </div>
+                  <div className="text-text-faint">
+                    {d.started} of {totalCards || d.started} cards started ·{" "}
+                    {d.mature} learned · {d.dueToday} due today
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
 
       {all.length > 0 && (
-        <div className="rounded-md border border-border bg-surface p-4">
-          <h2 className="mb-2 font-heading font-bold">Recent activity</h2>
-          <ul className="flex flex-col gap-1">
-            {all.slice(0, 20).map((a) => (
-              <li
-                key={a.id}
-                dir="auto"
-                className="flex items-center justify-between gap-4 text-sm text-text-muted"
-              >
-                <span>
-                  {cardLabel(a.card?.content)}
-                  {a.card?.deck ? ` (${a.card.deck.title})` : ""}
-                </span>
-                <span className={a.is_correct ? "text-green-600" : "text-red-600"}>
-                  {a.is_correct ? "Correct" : "Incorrect"} ·{" "}
-                  {new Date(a.attempted_at).toLocaleString()}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <RecentActivity
+          rows={all.slice(0, 30).map((a) => ({
+            id: a.id,
+            isCorrect: a.is_correct,
+            label: cardLabel(a.card?.content),
+            deckTitle: a.card?.deck?.title ?? null,
+            timeLabel: new Date(a.attempted_at).toLocaleString(undefined, {
+              month: "numeric",
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+            }),
+          }))}
+        />
       )}
     </div>
   );

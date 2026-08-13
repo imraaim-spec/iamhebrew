@@ -1,29 +1,38 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-
-const TYPE_LABELS: Record<string, string> = {
-  deck: "Flashcards",
-  listening: "Listening",
-  verb: "Verb Drill",
-  fillblank: "Fill in the Blanks",
-};
-
-type WallTask = {
-  type: "deck" | "listening" | "verb" | "fillblank";
-  id: string;
-  title: string;
-  href: string;
-};
-
-type WallDay = {
-  date: string;
-  notesText: string | null;
-  notionUrl: string | null;
-  tasks: WallTask[];
-};
+import { PatternBackdrop } from "@/components/pattern-backdrop";
+import {
+  StudentWall,
+  type WallLesson,
+  type WallTask,
+} from "@/components/student-wall";
+import { initialFor } from "@/lib/content-types";
 
 function dateKey(iso: string): string {
   return iso.slice(0, 10);
+}
+
+/**
+ * Consecutive days ending today or yesterday on which the student recorded
+ * at least one attempt. Yesterday still counts so the streak doesn't look
+ * broken first thing in the morning before they've practised.
+ */
+function computeStreak(dates: Set<string>): number {
+  if (dates.size === 0) return 0;
+  const today = new Date();
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+
+  const cursor = new Date(today);
+  if (!dates.has(iso(cursor))) {
+    cursor.setDate(cursor.getDate() - 1);
+    if (!dates.has(iso(cursor))) return 0;
+  }
+
+  let streak = 0;
+  while (dates.has(iso(cursor))) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
 }
 
 export default async function StudentHomePage() {
@@ -31,6 +40,14 @@ export default async function StudentHomePage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const { data: profile } = user
+    ? await supabase
+        .from("profiles")
+        .select("full_name, email")
+        .eq("id", user.id)
+        .single()
+    : { data: null };
 
   // RLS restricts each of these to only what's assigned to the current
   // student (or assigned to everyone) — no manual filtering needed.
@@ -54,35 +71,105 @@ export default async function StudentHomePage() {
         .eq("student_id", user.id)
     : { data: null };
 
-  const days = new Map<string, WallDay>();
+  // Attempt history, used for practised status, accuracy and the streak.
+  const { data: cardAttempts } = user
+    ? await supabase
+        .from("attempts")
+        .select("is_correct, attempted_at, card:cards(deck_id)")
+        .eq("student_id", user.id)
+    : { data: null };
+  const { data: verbAttempts } = user
+    ? await supabase
+        .from("verb_drill_attempts")
+        .select("drill_id")
+        .eq("student_id", user.id)
+    : { data: null };
+  const { data: listeningAttemptRows } = user
+    ? await supabase
+        .from("listening_attempts")
+        .select("exercise_id")
+        .eq("student_id", user.id)
+    : { data: null };
+  const { data: fillAttempts } = user
+    ? await supabase
+        .from("fill_blank_attempts")
+        .select("drill_id")
+        .eq("student_id", user.id)
+    : { data: null };
 
-  function getDay(date: string): WallDay {
+  // Per-deck correct/total, so a practised deck can show a real score.
+  const deckScores = new Map<string, { correct: number; total: number }>();
+  const activeDates = new Set<string>();
+  let overallCorrect = 0;
+  let overallTotal = 0;
+
+  for (const a of cardAttempts ?? []) {
+    const deckId = (a.card as unknown as { deck_id: string } | null)?.deck_id;
+    overallTotal += 1;
+    if (a.is_correct) overallCorrect += 1;
+    if (a.attempted_at) activeDates.add(dateKey(a.attempted_at as string));
+    if (!deckId) continue;
+    const entry = deckScores.get(deckId) ?? { correct: 0, total: 0 };
+    entry.total += 1;
+    if (a.is_correct) entry.correct += 1;
+    deckScores.set(deckId, entry);
+  }
+
+  const practisedVerbs = new Set((verbAttempts ?? []).map((r) => r.drill_id));
+  const practisedListening = new Set(
+    (listeningAttemptRows ?? []).map((r) => r.exercise_id)
+  );
+  const practisedFill = new Set((fillAttempts ?? []).map((r) => r.drill_id));
+
+  const days = new Map<string, WallLesson>();
+
+  function getDay(date: string): WallLesson {
     let day = days.get(date);
     if (!day) {
-      day = { date, notesText: null, notionUrl: null, tasks: [] };
+      day = {
+        date,
+        dateLabel: new Date(date).toLocaleDateString(undefined, {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }),
+        notesText: null,
+        notionUrl: null,
+        tasks: [],
+      };
       days.set(date, day);
     }
     return day;
   }
 
+  function push(date: string, task: WallTask) {
+    getDay(dateKey(date)).tasks.push(task);
+  }
+
   for (const a of deckAssignments ?? []) {
     if (!a.deck) continue;
     const deck = a.deck as unknown as { id: string; title: string };
-    getDay(dateKey(a.assigned_at)).tasks.push({
-      type: "deck",
+    const score = deckScores.get(deck.id);
+    push(a.assigned_at, {
+      type: "flashcards",
       id: deck.id,
       title: (a.custom_name as string | null) ?? deck.title,
       href: `/student/decks/${deck.id}/study`,
+      practised: !!score,
+      scoreLabel: score ? `${score.correct} / ${score.total} correct` : null,
     });
   }
   for (const a of listeningAssignments ?? []) {
     if (!a.exercise) continue;
     const exercise = a.exercise as unknown as { id: string; title: string };
-    getDay(dateKey(a.assigned_at)).tasks.push({
+    push(a.assigned_at, {
       type: "listening",
       id: exercise.id,
       title: exercise.title,
       href: `/student/listening/${exercise.id}`,
+      practised: practisedListening.has(exercise.id),
+      scoreLabel: null,
     });
   }
   for (const a of verbAssignments ?? []) {
@@ -92,92 +179,58 @@ export default async function StudentHomePage() {
       infinitive: string;
       translation: string;
     };
-    getDay(dateKey(a.assigned_at)).tasks.push({
-      type: "verb",
+    push(a.assigned_at, {
+      type: "verbs",
       id: drill.id,
       title: `${drill.infinitive} — ${drill.translation}`,
       href: `/student/verbs/${drill.id}`,
+      practised: practisedVerbs.has(drill.id),
+      scoreLabel: null,
     });
   }
   for (const a of fillBlankAssignments ?? []) {
     if (!a.drill) continue;
     const drill = a.drill as unknown as { id: string; title: string };
-    getDay(dateKey(a.assigned_at)).tasks.push({
-      type: "fillblank",
+    push(a.assigned_at, {
+      type: "fill",
       id: drill.id,
       title: drill.title,
       href: `/student/fill-blanks/${drill.id}`,
+      practised: practisedFill.has(drill.id),
+      scoreLabel: null,
     });
   }
+
   for (const note of notes ?? []) {
     const day = getDay(note.lesson_date);
     day.notesText = note.notes_text;
     day.notionUrl = note.notion_url;
   }
 
-  const sortedDays = Array.from(days.values()).sort((a, b) =>
+  const lessons = Array.from(days.values()).sort((a, b) =>
     a.date < b.date ? 1 : -1
   );
 
+  const email = profile?.email ?? user?.email ?? "";
+  const fullName = profile?.full_name ?? null;
+  const greetingName = fullName?.trim().split(/\s+/)[0] || email.split("@")[0];
+
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-6">
-      <h1 className="text-2xl">My Wall</h1>
-
-      {sortedDays.length > 0 ? (
-        <div className="flex flex-col gap-6">
-          {sortedDays.map((day) => (
-            <div
-              key={day.date}
-              className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5 shadow-sm"
-            >
-              <div className="text-sm font-semibold text-text-faint">
-                {new Date(day.date).toLocaleDateString(undefined, {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </div>
-
-              {day.notesText && (
-                <p dir="auto" className="whitespace-pre-wrap text-sm">
-                  {day.notesText}
-                </p>
-              )}
-
-              {day.notionUrl && (
-                <iframe
-                  src={day.notionUrl}
-                  className="h-96 w-full rounded-md border border-border"
-                />
-              )}
-
-              {day.tasks.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  {day.tasks.map((task) => (
-                    <Link
-                      key={`${task.type}-${task.id}`}
-                      href={task.href}
-                      className="block rounded-md border border-border p-3 hover:bg-bg-alt"
-                    >
-                      <div className="text-xs font-semibold uppercase text-text-faint">
-                        {TYPE_LABELS[task.type]}
-                      </div>
-                      <div dir="auto" className="font-medium">
-                        {task.title}
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-text-muted">
-          Nothing here yet — check back after your next lesson.
-        </p>
-      )}
-    </div>
+    <>
+      <PatternBackdrop />
+      <div className="relative z-10">
+        <StudentWall
+          greetingName={greetingName}
+          initial={initialFor(fullName, email)}
+          accuracyPct={
+            overallTotal > 0
+              ? Math.round((overallCorrect / overallTotal) * 100)
+              : null
+          }
+          streakDays={computeStreak(activeDates)}
+          lessons={lessons}
+        />
+      </div>
+    </>
   );
 }

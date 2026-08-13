@@ -9,7 +9,15 @@ type Flashcard = {
   content: { front: string; back: string; audio_url?: string };
 };
 
-export function StudySession({ cards }: { cards: Flashcard[] }) {
+export function StudySession({
+  cards,
+  dueCardIds,
+  srsEnabled = false,
+}: {
+  cards: Flashcard[];
+  dueCardIds?: string[];
+  srsEnabled?: boolean;
+}) {
   const [mode, setMode] = useState<"flashcards" | "multiple_choice">(
     "flashcards"
   );
@@ -36,7 +44,11 @@ export function StudySession({ cards }: { cards: Flashcard[] }) {
       </div>
 
       {mode === "flashcards" ? (
-        <FlashcardStudy cards={cards} />
+        <FlashcardStudy
+          cards={cards}
+          dueCardIds={dueCardIds}
+          srsEnabled={srsEnabled}
+        />
       ) : (
         <MultipleChoiceStudy cards={cards} />
       )}

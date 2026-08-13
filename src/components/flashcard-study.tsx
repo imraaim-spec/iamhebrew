@@ -1,24 +1,60 @@
 "use client";
 
 import { useState } from "react";
-import { logAttempt } from "@/lib/actions/attempts";
+import { reviewCard } from "@/lib/actions/attempts";
 
 type Flashcard = {
   id: string;
   content: { front: string; back: string; audio_url?: string };
 };
 
-export function FlashcardStudy({ cards }: { cards: Flashcard[] }) {
+export function FlashcardStudy({
+  cards,
+  dueCardIds,
+  srsEnabled = false,
+}: {
+  cards: Flashcard[];
+  dueCardIds?: string[];
+  srsEnabled?: boolean;
+}) {
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [results, setResults] = useState({ knew: 0, total: 0 });
   const [done, setDone] = useState(false);
+  const [practiseAll, setPractiseAll] = useState(false);
+
+  const dueSet = new Set(dueCardIds ?? []);
+  const queue =
+    srsEnabled && !practiseAll ? cards.filter((c) => dueSet.has(c.id)) : cards;
 
   if (cards.length === 0) {
     return (
       <p className="text-text-muted">
         No flashcards in this deck yet.
       </p>
+    );
+  }
+
+  if (queue.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-4">
+        <p className="text-xl font-medium">Nothing due today 🎉</p>
+        <p className="text-sm text-text-muted">
+          These words are scheduled for later — coming back to them only when
+          they&apos;re about to slip is what makes them stick.
+        </p>
+        <button
+          onClick={() => {
+            setPractiseAll(true);
+            setIndex(0);
+            setFlipped(false);
+            setResults({ knew: 0, total: 0 });
+          }}
+          className="rounded-sm border border-border px-5 py-2 text-sm font-semibold text-text-muted hover:bg-bg-alt"
+        >
+          Practise the whole deck anyway
+        </button>
+      </div>
     );
   }
 
@@ -30,6 +66,7 @@ export function FlashcardStudy({ cards }: { cards: Flashcard[] }) {
         </p>
         <button
           onClick={() => {
+            setPractiseAll(true);
             setIndex(0);
             setFlipped(false);
             setResults({ knew: 0, total: 0 });
@@ -43,18 +80,18 @@ export function FlashcardStudy({ cards }: { cards: Flashcard[] }) {
     );
   }
 
-  const card = cards[index];
+  const card = queue[index];
 
   function goTo(newIndex: number) {
-    if (newIndex < 0 || newIndex >= cards.length) return;
+    if (newIndex < 0 || newIndex >= queue.length) return;
     setIndex(newIndex);
     setFlipped(false);
   }
 
   async function mark(knew: boolean) {
-    await logAttempt(card.id, knew);
+    await reviewCard(card.id, knew, srsEnabled);
     setResults((r) => ({ knew: r.knew + (knew ? 1 : 0), total: r.total + 1 }));
-    if (index + 1 >= cards.length) {
+    if (index + 1 >= queue.length) {
       setDone(true);
     } else {
       setIndex(index + 1);
@@ -65,7 +102,7 @@ export function FlashcardStudy({ cards }: { cards: Flashcard[] }) {
   return (
     <div className="flex flex-col items-center gap-6">
       <p className="text-sm text-text-faint">
-        Card {index + 1} of {cards.length}
+        Card {index + 1} of {queue.length}
       </p>
 
       <div className="flex w-full max-w-md items-center gap-3">
@@ -88,7 +125,7 @@ export function FlashcardStudy({ cards }: { cards: Flashcard[] }) {
 
         <button
           onClick={() => goTo(index + 1)}
-          disabled={index === cards.length - 1}
+          disabled={index === queue.length - 1}
           aria-label="Next card"
           className="shrink-0 rounded-sm border border-border px-3 py-2 text-lg disabled:opacity-30"
         >
