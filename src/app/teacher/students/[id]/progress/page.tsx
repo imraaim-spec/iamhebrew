@@ -19,7 +19,7 @@ import { CreateStudentContentForm } from "@/components/create-student-content-fo
 import { StudentProfileHeader } from "@/components/student-profile-header";
 import { AccuracyDonut } from "@/components/accuracy-donut";
 import { RecentActivity } from "@/components/recent-activity";
-import { AssignExistingItemForm, type AssignableOption } from "@/components/assign-existing-item-form";
+import { AddAssignmentForm } from "@/components/add-assignment-form";
 
 type CardContent = {
   front?: string;
@@ -295,6 +295,112 @@ export default async function StudentProgressPage({
     a.date < b.date ? 1 : -1
   );
 
+  // Which lesson each individually-assigned item came from, so the assigned
+  // list can show "Lesson 3 · 02 August 2026" next to each name.
+  const lessonTitleByDate = new Map(
+    (lessonNotes ?? []).map((n) => [n.lesson_date, n.title])
+  );
+  type AssignedMeta = { date: string; lessonTitle: string | null };
+  function metaFrom(
+    rows: { assigned_at: string }[] | null,
+    itemIdOf: (row: never) => string | null
+  ): Map<string, AssignedMeta> {
+    const map = new Map<string, AssignedMeta>();
+    for (const row of rows ?? []) {
+      const itemId = itemIdOf(row as never);
+      if (!itemId) continue;
+      const date = dateKey(row.assigned_at);
+      map.set(itemId, { date, lessonTitle: lessonTitleByDate.get(date) ?? null });
+    }
+    return map;
+  }
+
+  const deckMeta = metaFrom(
+    deckAssignmentsForLessons,
+    (r: { deck: { id: string } | null }) => r.deck?.id ?? null
+  );
+  const listeningMeta = metaFrom(
+    listeningAssignmentsForLessons,
+    (r: { exercise: { id: string } | null }) => r.exercise?.id ?? null
+  );
+  const verbMeta = metaFrom(
+    verbAssignmentsForLessons,
+    (r: { drill: { id: string } | null }) => r.drill?.id ?? null
+  );
+  const fillBlankMeta = metaFrom(
+    fillBlankAssignmentsForLessons,
+    (r: { drill: { id: string } | null }) => r.drill?.id ?? null
+  );
+
+  function lessonRef(meta: AssignedMeta | undefined, isEveryone: boolean): string {
+    if (!meta) return isEveryone ? "Shared with everyone" : "";
+    const when = new Date(meta.date).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
+    return meta.lessonTitle ? `${meta.lessonTitle} · ${when}` : when;
+  }
+
+  // Language is a property of the student, not something to pick per
+  // assignment: only hide content tagged as a *different* language.
+  // Untagged content stays visible since most older material has no tag.
+  const languageFits = (itemLanguage: string | null) =>
+    !student.language || !itemLanguage || itemLanguage === student.language;
+
+  const ASSIGNED_SECTIONS = [
+    {
+      type: "deck" as const,
+      title: "Flash cards",
+      items: decks ?? [],
+      status: deckStatus,
+      labels: deckLabels,
+      meta: deckMeta,
+      hrefFor: (itemId: string) => `/teacher/decks/${itemId}/study`,
+    },
+    {
+      type: "listening" as const,
+      title: "Listening exercises",
+      items: listeningExercises ?? [],
+      status: listeningStatus,
+      labels: listeningLabels,
+      meta: listeningMeta,
+      hrefFor: (itemId: string) => `/teacher/listening/${itemId}/study`,
+    },
+    {
+      type: "verb" as const,
+      title: "Verb drills",
+      items: verbDrills ?? [],
+      status: verbStatus,
+      labels: verbLabels,
+      meta: verbMeta,
+      hrefFor: (itemId: string) => `/teacher/verbs/${itemId}/study`,
+    },
+    {
+      type: "fillblank" as const,
+      title: "Fill in the blanks",
+      items: fillBlankDrills ?? [],
+      status: fillBlankStatus,
+      labels: fillBlankLabels,
+      meta: fillBlankMeta,
+      hrefFor: (itemId: string) => `/teacher/fill-blanks/${itemId}/study`,
+    },
+  ];
+
+  function assignableOptions(type: (typeof ASSIGNED_SECTIONS)[number]["type"]) {
+    const section = ASSIGNED_SECTIONS.find((s) => s.type === type)!;
+    return section.items
+      .filter(
+        (item) =>
+          !section.status.get(item.id)?.assigned &&
+          languageFits((item as { language: string | null }).language)
+      )
+      .map((item) => ({
+        id: item.id,
+        label: section.labels.get(item.id) ?? item.id,
+      }));
+  }
+
   const { data: attempts } = await supabase
     .from("attempts")
     .select(
@@ -448,205 +554,72 @@ export default async function StudentProgressPage({
 
       <div className="flex flex-col gap-4 rounded-md border border-border bg-surface p-4">
         <h2 className="font-heading font-bold">Assigned content</h2>
-        <p className="text-sm text-text-muted">
-          What this student currently has, and a picker to add anything
-          else. Items shared with everyone show &quot;(everyone)&quot; —
-          removing one only affects this student.
-        </p>
 
-        {decks && decks.length > 0 && (
-          <div className="flex flex-col gap-2 border-t border-border pt-3">
-            <h3 className="text-sm font-semibold text-text-faint">Decks</h3>
-            <ul className="flex flex-col gap-1">
-              {decks
-                .filter((d) => deckStatus.get(d.id)?.assigned)
-                .map((d) => (
-                  <li key={d.id} className="flex items-center justify-between gap-2 text-sm">
-                    <Link
-                      href={`/teacher/decks/${d.id}/study`}
-                      dir="auto"
-                      className="text-accent-2 hover:underline"
+        {ASSIGNED_SECTIONS.map((section) => {
+          const rows = section.items.filter((i) => section.status.get(i.id)?.assigned);
+          if (rows.length === 0) return null;
+          return (
+            <div key={section.type} className="flex flex-col gap-1 border-t border-border pt-3">
+              <h3 className="text-sm font-semibold text-text-faint">{section.title}</h3>
+              <ul className="flex flex-col gap-1">
+                {rows.map((item) => {
+                  const isEveryone = !!section.status.get(item.id)?.everyone;
+                  const ref = lessonRef(section.meta.get(item.id), isEveryone);
+                  return (
+                    <li
+                      key={item.id}
+                      className="flex items-baseline justify-between gap-3 text-sm"
                     >
-                      {deckLabels.get(d.id)}
-                    </Link>
-                    <div className="flex shrink-0 items-center gap-2">
-                      {deckStatus.get(d.id)?.everyone && (
-                        <span className="text-xs text-text-faint">(everyone)</span>
-                      )}
-                      <form action={unassignItemFromStudent.bind(null, id, "deck", d.id)}>
-                        <button type="submit" className="text-xs text-red-600 hover:underline">
-                          Remove
-                        </button>
-                      </form>
-                    </div>
-                  </li>
-                ))}
-            </ul>
-            <AssignExistingItemForm
-              key={student.language ?? "none"}
-              defaultLanguage={student.language}
-              action={assignDeckToStudent}
-              placeholder="Add a deck..."
-              options={decks
-                .filter((d) => !deckStatus.get(d.id)?.assigned)
-                .map(
-                  (d): AssignableOption => ({
-                    id: d.id,
-                    label: deckLabels.get(d.id) ?? d.title,
-                    language: d.language,
-                  })
-                )}
-            />
-          </div>
+                      <Link
+                        href={section.hrefFor(item.id)}
+                        dir="auto"
+                        className="text-accent-2 hover:underline"
+                      >
+                        {section.labels.get(item.id)}
+                      </Link>
+                      <span className="flex shrink-0 items-baseline gap-3">
+                        {ref && <span className="text-xs text-text-faint">{ref}</span>}
+                        <form
+                          action={unassignItemFromStudent.bind(null, id, section.type, item.id)}
+                        >
+                          <button
+                            type="submit"
+                            className="text-xs text-red-600 hover:underline"
+                          >
+                            Remove
+                          </button>
+                        </form>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
+
+        {ASSIGNED_SECTIONS.every(
+          (s) => s.items.filter((i) => s.status.get(i.id)?.assigned).length === 0
+        ) && (
+          <p className="text-sm text-text-muted">
+            Nothing assigned yet — add something below.
+          </p>
         )}
 
-        {listeningExercises && listeningExercises.length > 0 && (
-          <div className="flex flex-col gap-2 border-t border-border pt-3">
-            <h3 className="text-sm font-semibold text-text-faint">Listening Exercises</h3>
-            <ul className="flex flex-col gap-1">
-              {listeningExercises
-                .filter((e) => listeningStatus.get(e.id)?.assigned)
-                .map((e) => (
-                  <li key={e.id} className="flex items-center justify-between gap-2 text-sm">
-                    <Link
-                      href={`/teacher/listening/${e.id}/study`}
-                      dir="auto"
-                      className="text-accent-2 hover:underline"
-                    >
-                      {listeningLabels.get(e.id)}
-                    </Link>
-                    <div className="flex shrink-0 items-center gap-2">
-                      {listeningStatus.get(e.id)?.everyone && (
-                        <span className="text-xs text-text-faint">(everyone)</span>
-                      )}
-                      <form action={unassignItemFromStudent.bind(null, id, "listening", e.id)}>
-                        <button type="submit" className="text-xs text-red-600 hover:underline">
-                          Remove
-                        </button>
-                      </form>
-                    </div>
-                  </li>
-                ))}
-            </ul>
-            <AssignExistingItemForm
-              key={student.language ?? "none"}
-              defaultLanguage={student.language}
-              action={assignListeningToStudent}
-              placeholder="Add a listening exercise..."
-              options={listeningExercises
-                .filter((e) => !listeningStatus.get(e.id)?.assigned)
-                .map(
-                  (e): AssignableOption => ({
-                    id: e.id,
-                    label: listeningLabels.get(e.id) ?? e.title,
-                    language: e.language,
-                  })
-                )}
-            />
-          </div>
-        )}
-
-        {verbDrills && verbDrills.length > 0 && (
-          <div className="flex flex-col gap-2 border-t border-border pt-3">
-            <h3 className="text-sm font-semibold text-text-faint">Verb Drills</h3>
-            <ul className="flex flex-col gap-1">
-              {verbDrills
-                .filter((v) => verbStatus.get(v.id)?.assigned)
-                .map((v) => (
-                  <li key={v.id} className="flex items-center justify-between gap-2 text-sm">
-                    <Link
-                      href={`/teacher/verbs/${v.id}/study`}
-                      dir="auto"
-                      className="text-accent-2 hover:underline"
-                    >
-                      {verbLabels.get(v.id)}
-                    </Link>
-                    <div className="flex shrink-0 items-center gap-2">
-                      {verbStatus.get(v.id)?.everyone && (
-                        <span className="text-xs text-text-faint">(everyone)</span>
-                      )}
-                      <form action={unassignItemFromStudent.bind(null, id, "verb", v.id)}>
-                        <button type="submit" className="text-xs text-red-600 hover:underline">
-                          Remove
-                        </button>
-                      </form>
-                    </div>
-                  </li>
-                ))}
-            </ul>
-            <AssignExistingItemForm
-              key={student.language ?? "none"}
-              defaultLanguage={student.language}
-              action={assignVerbToStudent}
-              placeholder="Add a verb drill..."
-              options={verbDrills
-                .filter((v) => !verbStatus.get(v.id)?.assigned)
-                .map(
-                  (v): AssignableOption => ({
-                    id: v.id,
-                    label: verbLabels.get(v.id) ?? `${v.infinitive} — ${v.translation}`,
-                    language: v.language,
-                  })
-                )}
-            />
-          </div>
-        )}
-
-        {fillBlankDrills && fillBlankDrills.length > 0 && (
-          <div className="flex flex-col gap-2 border-t border-border pt-3">
-            <h3 className="text-sm font-semibold text-text-faint">Fill in the Blanks</h3>
-            <ul className="flex flex-col gap-1">
-              {fillBlankDrills
-                .filter((d) => fillBlankStatus.get(d.id)?.assigned)
-                .map((d) => (
-                  <li key={d.id} className="flex items-center justify-between gap-2 text-sm">
-                    <Link
-                      href={`/teacher/fill-blanks/${d.id}/study`}
-                      dir="auto"
-                      className="text-accent-2 hover:underline"
-                    >
-                      {fillBlankLabels.get(d.id)}
-                    </Link>
-                    <div className="flex shrink-0 items-center gap-2">
-                      {fillBlankStatus.get(d.id)?.everyone && (
-                        <span className="text-xs text-text-faint">(everyone)</span>
-                      )}
-                      <form action={unassignItemFromStudent.bind(null, id, "fillblank", d.id)}>
-                        <button type="submit" className="text-xs text-red-600 hover:underline">
-                          Remove
-                        </button>
-                      </form>
-                    </div>
-                  </li>
-                ))}
-            </ul>
-            <AssignExistingItemForm
-              key={student.language ?? "none"}
-              defaultLanguage={student.language}
-              action={assignFillBlankToStudent}
-              placeholder="Add a fill-in-the-blank drill..."
-              options={fillBlankDrills
-                .filter((d) => !fillBlankStatus.get(d.id)?.assigned)
-                .map(
-                  (d): AssignableOption => ({
-                    id: d.id,
-                    label: fillBlankLabels.get(d.id) ?? d.title,
-                    language: d.language,
-                  })
-                )}
-            />
-          </div>
-        )}
-
-        {!decks?.length &&
-          !listeningExercises?.length &&
-          !verbDrills?.length &&
-          !fillBlankDrills?.length && (
-            <p className="text-sm text-text-muted">
-              Nothing created yet — build a deck, listening exercise, verb
-              drill, or fill-in-the-blank drill first.
-            </p>
-          )}
+        <AddAssignmentForm
+          actions={{
+            deck: assignDeckToStudent,
+            listening: assignListeningToStudent,
+            verb: assignVerbToStudent,
+            fillblank: assignFillBlankToStudent,
+          }}
+          options={{
+            deck: assignableOptions("deck"),
+            listening: assignableOptions("listening"),
+            verb: assignableOptions("verb"),
+            fillblank: assignableOptions("fillblank"),
+          }}
+        />
       </div>
 
       {courses && courses.length > 0 && (
