@@ -223,7 +223,13 @@ export default async function StudentProgressPage({
     .select("assigned_at, drill:fill_blank_drills(id, title)")
     .eq("student_id", id);
 
-  type LessonTask = { label: string; typeLabel: string; href: string };
+  type LessonTask = {
+    label: string;
+    typeLabel: string;
+    href: string;
+    itemType: "deck" | "listening" | "verb" | "fillblank";
+    itemId: string;
+  };
   type LessonNoteRow = {
     id: string;
     lesson_date: string;
@@ -254,6 +260,8 @@ export default async function StudentProgressPage({
       label: deck.title,
       typeLabel: "Deck",
       href: `/teacher/decks/${deck.id}/study`,
+      itemType: "deck",
+      itemId: deck.id,
     });
   }
   for (const a of listeningAssignmentsForLessons ?? []) {
@@ -263,6 +271,8 @@ export default async function StudentProgressPage({
       label: exercise.title,
       typeLabel: "Listening",
       href: `/teacher/listening/${exercise.id}/study`,
+      itemType: "listening",
+      itemId: exercise.id,
     });
   }
   for (const a of verbAssignmentsForLessons ?? []) {
@@ -276,6 +286,8 @@ export default async function StudentProgressPage({
       label: `${drill.infinitive} — ${drill.translation}`,
       typeLabel: "Verb Drill",
       href: `/teacher/verbs/${drill.id}/study`,
+      itemType: "verb",
+      itemId: drill.id,
     });
   }
   for (const a of fillBlankAssignmentsForLessons ?? []) {
@@ -285,6 +297,8 @@ export default async function StudentProgressPage({
       label: drill.title,
       typeLabel: "Fill in the Blanks",
       href: `/teacher/fill-blanks/${drill.id}/study`,
+      itemType: "fillblank",
+      itemId: drill.id,
     });
   }
   for (const note of lessonNotes ?? []) {
@@ -294,53 +308,6 @@ export default async function StudentProgressPage({
   const lessonCabinet = Array.from(lessonsByDate.values()).sort((a, b) =>
     a.date < b.date ? 1 : -1
   );
-
-  // Which lesson each individually-assigned item came from, so the assigned
-  // list can show "Lesson 3 · 02 August 2026" next to each name.
-  const lessonTitleByDate = new Map(
-    (lessonNotes ?? []).map((n) => [n.lesson_date, n.title])
-  );
-  type AssignedMeta = { date: string; lessonTitle: string | null };
-  function metaFrom(
-    rows: { assigned_at: string }[] | null,
-    itemIdOf: (row: never) => string | null
-  ): Map<string, AssignedMeta> {
-    const map = new Map<string, AssignedMeta>();
-    for (const row of rows ?? []) {
-      const itemId = itemIdOf(row as never);
-      if (!itemId) continue;
-      const date = dateKey(row.assigned_at);
-      map.set(itemId, { date, lessonTitle: lessonTitleByDate.get(date) ?? null });
-    }
-    return map;
-  }
-
-  const deckMeta = metaFrom(
-    deckAssignmentsForLessons,
-    (r: { deck: { id: string } | null }) => r.deck?.id ?? null
-  );
-  const listeningMeta = metaFrom(
-    listeningAssignmentsForLessons,
-    (r: { exercise: { id: string } | null }) => r.exercise?.id ?? null
-  );
-  const verbMeta = metaFrom(
-    verbAssignmentsForLessons,
-    (r: { drill: { id: string } | null }) => r.drill?.id ?? null
-  );
-  const fillBlankMeta = metaFrom(
-    fillBlankAssignmentsForLessons,
-    (r: { drill: { id: string } | null }) => r.drill?.id ?? null
-  );
-
-  function lessonRef(meta: AssignedMeta | undefined, isEveryone: boolean): string {
-    if (!meta) return isEveryone ? "Shared with everyone" : "";
-    const when = new Date(meta.date).toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    });
-    return meta.lessonTitle ? `${meta.lessonTitle} · ${when}` : when;
-  }
 
   // Language is a property of the student, not something to pick per
   // assignment: only hide content tagged as a *different* language.
@@ -355,7 +322,6 @@ export default async function StudentProgressPage({
       items: decks ?? [],
       status: deckStatus,
       labels: deckLabels,
-      meta: deckMeta,
       hrefFor: (itemId: string) => `/teacher/decks/${itemId}/study`,
     },
     {
@@ -364,7 +330,6 @@ export default async function StudentProgressPage({
       items: listeningExercises ?? [],
       status: listeningStatus,
       labels: listeningLabels,
-      meta: listeningMeta,
       hrefFor: (itemId: string) => `/teacher/listening/${itemId}/study`,
     },
     {
@@ -373,7 +338,6 @@ export default async function StudentProgressPage({
       items: verbDrills ?? [],
       status: verbStatus,
       labels: verbLabels,
-      meta: verbMeta,
       hrefFor: (itemId: string) => `/teacher/verbs/${itemId}/study`,
     },
     {
@@ -382,7 +346,6 @@ export default async function StudentProgressPage({
       items: fillBlankDrills ?? [],
       status: fillBlankStatus,
       labels: fillBlankLabels,
-      meta: fillBlankMeta,
       hrefFor: (itemId: string) => `/teacher/fill-blanks/${itemId}/study`,
     },
   ];
@@ -555,71 +518,178 @@ export default async function StudentProgressPage({
       <div className="flex flex-col gap-4 rounded-md border border-border bg-surface p-4">
         <h2 className="font-heading font-bold">Assigned content</h2>
 
-        {ASSIGNED_SECTIONS.map((section) => {
-          const rows = section.items.filter((i) => section.status.get(i.id)?.assigned);
-          if (rows.length === 0) return null;
+        {(() => {
+          const everyoneRows = ASSIGNED_SECTIONS.flatMap((section) =>
+            section.items
+              .filter((i) => section.status.get(i.id)?.everyone)
+              .map((item) => ({ section, item }))
+          );
+          if (everyoneRows.length === 0) return null;
           return (
-            <div key={section.type} className="flex flex-col gap-1 border-t border-border pt-3">
-              <h3 className="text-sm font-semibold text-text-faint">{section.title}</h3>
+            <div className="flex flex-col gap-1 border-t border-border pt-3">
+              <h3 className="text-sm font-semibold text-text-faint">
+                Shared with everyone
+              </h3>
               <ul className="flex flex-col gap-1">
-                {rows.map((item) => {
-                  const isEveryone = !!section.status.get(item.id)?.everyone;
-                  const ref = lessonRef(section.meta.get(item.id), isEveryone);
-                  return (
-                    <li
-                      key={item.id}
-                      className="flex items-baseline justify-between gap-3 text-sm"
+                {everyoneRows.map(({ section, item }) => (
+                  <li
+                    key={`${section.type}-${item.id}`}
+                    className="flex items-baseline justify-between gap-3 text-sm"
+                  >
+                    <Link
+                      href={section.hrefFor(item.id)}
+                      dir="auto"
+                      className="text-accent-2 hover:underline"
                     >
-                      <Link
-                        href={section.hrefFor(item.id)}
-                        dir="auto"
-                        className="text-accent-2 hover:underline"
-                      >
-                        {section.labels.get(item.id)}
-                      </Link>
-                      <span className="flex shrink-0 items-baseline gap-3">
-                        {ref && <span className="text-xs text-text-faint">{ref}</span>}
-                        <form
-                          action={unassignItemFromStudent.bind(null, id, section.type, item.id)}
-                        >
-                          <button
-                            type="submit"
-                            className="text-xs text-red-600 hover:underline"
-                          >
-                            Remove
-                          </button>
-                        </form>
-                      </span>
-                    </li>
-                  );
-                })}
+                      {section.labels.get(item.id)}
+                    </Link>
+                    <form
+                      action={unassignItemFromStudent.bind(null, id, section.type, item.id)}
+                    >
+                      <button type="submit" className="text-xs text-red-600 hover:underline">
+                        Remove for this student
+                      </button>
+                    </form>
+                  </li>
+                ))}
               </ul>
             </div>
           );
-        })}
+        })()}
 
-        {ASSIGNED_SECTIONS.every(
-          (s) => s.items.filter((i) => s.status.get(i.id)?.assigned).length === 0
-        ) && (
-          <p className="text-sm text-text-muted">
-            Nothing assigned yet — add something below.
-          </p>
-        )}
+        <div className="border-t border-border pt-3">
+          <AddAssignmentForm
+            actions={{
+              deck: assignDeckToStudent,
+              listening: assignListeningToStudent,
+              verb: assignVerbToStudent,
+              fillblank: assignFillBlankToStudent,
+            }}
+            options={{
+              deck: assignableOptions("deck"),
+              listening: assignableOptions("listening"),
+              verb: assignableOptions("verb"),
+              fillblank: assignableOptions("fillblank"),
+            }}
+          />
+        </div>
 
-        <AddAssignmentForm
-          actions={{
-            deck: assignDeckToStudent,
-            listening: assignListeningToStudent,
-            verb: assignVerbToStudent,
-            fillblank: assignFillBlankToStudent,
-          }}
-          options={{
-            deck: assignableOptions("deck"),
-            listening: assignableOptions("listening"),
-            verb: assignableOptions("verb"),
-            fillblank: assignableOptions("fillblank"),
-          }}
-        />
+        <div className="flex flex-col gap-3 border-t border-border pt-3">
+          <h3 className="text-sm font-semibold text-text-faint">By lesson</h3>
+          {lessonCabinet.length > 0 ? (
+            lessonCabinet.map((lesson) => {
+              const tasksByType = new Map<string, LessonTask[]>();
+              for (const task of lesson.tasks) {
+                const list = tasksByType.get(task.typeLabel) ?? [];
+                list.push(task);
+                tasksByType.set(task.typeLabel, list);
+              }
+
+              return (
+                <div
+                  key={lesson.date}
+                  className="flex flex-col gap-2 rounded-md border border-border p-4"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="text-xs font-semibold uppercase text-text-faint">
+                        {new Date(lesson.date).toLocaleDateString()}
+                      </div>
+                      <div className="font-heading font-bold">
+                        {lesson.note?.title || "Untitled lesson"}
+                      </div>
+                    </div>
+                    {lesson.note && (
+                      <div className="flex shrink-0 gap-3">
+                        <a
+                          href={`?edit_date=${lesson.note.lesson_date}`}
+                          className="text-sm text-text-faint hover:underline"
+                        >
+                          Edit
+                        </a>
+                        <form action={deleteLessonNote.bind(null, lesson.note.id, id)}>
+                          <button
+                            type="submit"
+                            className="text-sm text-red-600 hover:underline"
+                          >
+                            Delete
+                          </button>
+                        </form>
+                      </div>
+                    )}
+                  </div>
+
+                  {lesson.note?.notes_text && (
+                    <p dir="auto" className="whitespace-pre-wrap text-sm">
+                      {lesson.note.notes_text}
+                    </p>
+                  )}
+                  {lesson.note?.notion_url && (
+                    <a
+                      href={lesson.note.notion_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-accent-2 hover:underline"
+                    >
+                      Notion link
+                    </a>
+                  )}
+
+                  {tasksByType.size > 0 ? (
+                    <div className="flex flex-col gap-2 border-t border-border pt-2">
+                      {Array.from(tasksByType.entries()).map(([typeLabel, tasks]) => (
+                        <div key={typeLabel}>
+                          <div className="text-xs font-semibold text-text-faint">
+                            {typeLabel}
+                          </div>
+                          <ul className="flex flex-col gap-1 text-sm">
+                            {tasks.map((task, i) => (
+                              <li
+                                key={i}
+                                dir="auto"
+                                className="flex items-baseline justify-between gap-3"
+                              >
+                                <Link
+                                  href={task.href}
+                                  className="text-accent-2 hover:underline"
+                                >
+                                  {task.label}
+                                </Link>
+                                <form
+                                  action={unassignItemFromStudent.bind(
+                                    null,
+                                    id,
+                                    task.itemType,
+                                    task.itemId
+                                  )}
+                                >
+                                  <button
+                                    type="submit"
+                                    className="text-xs text-red-600 hover:underline"
+                                  >
+                                    Remove
+                                  </button>
+                                </form>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-text-faint">
+                      Nothing individually assigned this day.
+                    </p>
+                  )}
+                </div>
+              );
+            })
+          ) : (
+            <p className="text-sm text-text-muted">
+              Nothing assigned to a specific lesson yet.
+            </p>
+          )}
+        </div>
       </div>
 
       {courses && courses.length > 0 && (
@@ -665,11 +735,12 @@ export default async function StudentProgressPage({
           {noteBeingEdited ? "Edit lesson" : "Add a lesson"}
         </h2>
         <p className="text-sm text-text-muted">
-          One entry per day — everything assigned that day (from the
-          checklist above or the &quot;create new content&quot; section)
-          automatically groups under it below. Paste a Notion link only if
-          that page is shared publicly (&quot;Share to web&quot;), otherwise
-          the student won&apos;t be able to open it.
+          One entry per day — everything assigned that day (from &quot;Add
+          more&quot; above or the &quot;create new content&quot; section)
+          automatically groups under it in &quot;Assigned content&quot;
+          above. Paste a Notion link only if that page is shared publicly
+          (&quot;Share to web&quot;), otherwise the student won&apos;t be
+          able to open it.
         </p>
         <div className="flex gap-3">
           <label className="text-sm text-text-muted">
@@ -714,96 +785,6 @@ export default async function StudentProgressPage({
         </button>
       </form>
 
-      {lessonCabinet.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <h2 className="font-heading font-bold">Lessons</h2>
-          {lessonCabinet.map((lesson) => {
-            const tasksByType = new Map<string, LessonTask[]>();
-            for (const task of lesson.tasks) {
-              const list = tasksByType.get(task.typeLabel) ?? [];
-              list.push(task);
-              tasksByType.set(task.typeLabel, list);
-            }
-
-            return (
-              <div
-                key={lesson.date}
-                className="flex flex-col gap-2 rounded-md border border-border bg-surface p-4"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-xs font-semibold uppercase text-text-faint">
-                      {new Date(lesson.date).toLocaleDateString()}
-                    </div>
-                    <div className="font-heading font-bold">
-                      {lesson.note?.title || "Untitled lesson"}
-                    </div>
-                  </div>
-                  {lesson.note && (
-                    <div className="flex shrink-0 gap-3">
-                      <a
-                        href={`?edit_date=${lesson.note.lesson_date}`}
-                        className="text-sm text-text-faint hover:underline"
-                      >
-                        Edit
-                      </a>
-                      <form action={deleteLessonNote.bind(null, lesson.note.id, id)}>
-                        <button
-                          type="submit"
-                          className="text-sm text-red-600 hover:underline"
-                        >
-                          Delete
-                        </button>
-                      </form>
-                    </div>
-                  )}
-                </div>
-
-                {lesson.note?.notes_text && (
-                  <p dir="auto" className="whitespace-pre-wrap text-sm">
-                    {lesson.note.notes_text}
-                  </p>
-                )}
-                {lesson.note?.notion_url && (
-                  <a
-                    href={lesson.note.notion_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-accent-2 hover:underline"
-                  >
-                    Notion link
-                  </a>
-                )}
-
-                {tasksByType.size > 0 ? (
-                  <div className="flex flex-col gap-2 border-t border-border pt-2">
-                    {Array.from(tasksByType.entries()).map(([typeLabel, tasks]) => (
-                      <div key={typeLabel}>
-                        <div className="text-xs font-semibold text-text-faint">
-                          {typeLabel}
-                        </div>
-                        <ul className="text-sm">
-                          {tasks.map((task, i) => (
-                            <li key={i} dir="auto">
-                              <Link href={task.href} className="text-accent-2 hover:underline">
-                                {task.label}
-                              </Link>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-text-faint">
-                    Nothing individually assigned this day.
-                  </p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-lg border border-border bg-surface p-5">
