@@ -592,12 +592,18 @@ export default async function StudentProgressPage({
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <div className="text-xs font-semibold uppercase text-text-faint">
-                        {new Date(lesson.date).toLocaleDateString()}
-                      </div>
-                      <div className="font-heading font-bold">
-                        {lesson.note?.title || "Untitled lesson"}
-                      </div>
+                      {lesson.note?.title ? (
+                        <>
+                          <div className="text-xs font-semibold uppercase text-text-faint">
+                            {new Date(lesson.date).toLocaleDateString()}
+                          </div>
+                          <div className="font-heading font-bold">{lesson.note.title}</div>
+                        </>
+                      ) : (
+                        <div className="font-heading font-bold">
+                          {new Date(lesson.date).toLocaleDateString()}
+                        </div>
+                      )}
                     </div>
                     {lesson.note && (
                       <div className="flex shrink-0 gap-3">
